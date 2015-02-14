@@ -1,6 +1,6 @@
 /*
     This file is part of eID Suite.
-    Copyright (C) 2014 Egelke BVBA
+    Copyright (C) 2014-2015 Egelke BVBA
 
     eID Suite is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -15,16 +15,20 @@
     You should have received a copy of the GNU Affero General Public License
     along with eID Suite.  If not, see <http://www.gnu.org/licenses/>.
 */
-package net.egelke.android.eid.suite;
+package net.egelke.android.eid.belpic;
 
-import android.app.Application;
-import android.test.ApplicationTestCase;
+import android.os.Parcelable;
 
-/**
- * <a href="http://d.android.com/tools/testing/testing_android.html">Testing Fundamentals</a>
- */
-public class ApplicationTest extends ApplicationTestCase<Application> {
-    public ApplicationTest() {
-        super(Application.class);
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+
+public class CertificateFactory extends Factory {
+
+    @Override
+    public X509Certificate create(byte[] bytes) throws IOException, CertificateException {
+        java.security.cert.CertificateFactory factory = java.security.cert.CertificateFactory.getInstance("X.509");
+        return (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(bytes));
     }
 }

@@ -10,4 +10,18 @@
     <string name="action_settings">Settings</string>
     <string name="title_activity_sign">SignActivity</string>
 
+    <string name="class_audio">audio device</string>
+    <string name="class_cdc_data">(CDC) communication device</string>
+    <string name="class_comm">communication device</string>
+    <string name="class_content_sec">security device</string>
+    <string name="class_hid">human interface device</string>
+    <string name="class_hub">USB hub</string>
+    <string name="class_mass_storage">mass storage device</string>
+    <string name="class_misc">(miscellaneous) wireless device</string>
+    <string name="class_physica">physical device</string>
+    <string name="class_printer">printer</string>
+    <string name="class_still_image">still image device</string>
+    <string name="class_unknown">unknown</string>
+    <string name="class_video">video device</string>
+    <string name="class_wireless_controller">wireless controller device</string>
 </resources>
