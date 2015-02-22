@@ -36,6 +36,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.Parcelable;
+import android.os.PowerManager;
 import android.os.RemoteException;
 import android.os.SystemClock;
 import android.support.v4.app.NotificationCompat;
@@ -45,7 +46,6 @@ import net.egelke.android.eid.belpic.FileId;
 import net.egelke.android.eid.reader.EidCardCallback;
 import net.egelke.android.eid.reader.EidCardReader;
 import net.egelke.android.eid.usb.CCID;
-import net.egelke.android.eid.view.R;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -60,6 +60,9 @@ public class EidService extends Service {
 
     private static final String TAG = "net.egelke.android.eid";
     private static final String ACTION_USB_PERMISSION = "net.egelke.android.eid.USB_PERMISSION";
+    private static final long USB_TIMEOUT = 10 * 60 * 1000; //10 MIN
+    private static final long EID_TIMEOUT = 10 * 60 * 1000; //10 MIN
+    private static final long CONFIRM_TIMEOUT = 1 * 60 * 1000; //1MIN
 
     //Internal
     private static final int QUIT = 0;
@@ -76,20 +79,42 @@ public class EidService extends Service {
 
         @Override
         public void handleMessage(Message msg) {
-            if (msg.what == QUIT) {
+            //Stop if requested
+            if (destroyed) {
                 Looper.myLooper().quit();
                 return;
             }
 
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
+                    .setSmallIcon(R.drawable.ic_stat_card)
+                    .setContentTitle("eID Service: Reader initialization")
+                    .setContentText("Your eID reader is being initialized")
+                    .setCategory(Notification.CATEGORY_SERVICE);
+            PowerManager.WakeLock wl = powerMgr.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, TAG);
+
+            wl.acquire();
+            startForeground(1, builder.build());
             try {
                 obtainUsbDevice();
                 obtainUsbPermission();
                 obtainEidReader();
                 try {
+                    builder = new NotificationCompat.Builder(EidService.this)
+                            .setSmallIcon(R.drawable.ic_stat_card)
+                            .setContentTitle("eID Service: Card initialization")
+                            .setContentText("Your eID card is being initialized")
+                            .setCategory(Notification.CATEGORY_SERVICE);
+                    notifyMgr.notify(1, builder.build());
                     obtainEidCard();
                     switch (msg.what) {
                         case READ_DATA:
-                            for(FileId fileId : FileId.values()) {
+                            builder = new NotificationCompat.Builder(EidService.this)
+                                    .setSmallIcon(R.drawable.ic_stat_card)
+                                    .setContentTitle("eID Service: Card read")
+                                    .setContentText("The data (e.g. identity, address, photo) of your eID card is being read")
+                                    .setCategory(Notification.CATEGORY_SERVICE);
+                            notifyMgr.notify(1, builder.build());
+                            for (FileId fileId : FileId.values()) {
                                 replyIfNeeded(msg, fileId);
                             }
                         case SIGN_PDF:
@@ -105,6 +130,9 @@ public class EidService extends Service {
                 Log.w(TAG, "Failed to process message due to illegal state", e);
             } catch (Exception e) {
                 Log.e(TAG, "Failed to process message", e);
+            } finally {
+                wl.release();
+                stopForeground(true);
             }
         }
 
@@ -157,35 +185,32 @@ public class EidService extends Service {
     private Messenger messenger = null;
     private UsbManager usbManager;
     private NotificationManager notifyMgr;
+    private PowerManager powerMgr;
     private int notifyId = 10;
+    private boolean destroyed;
+    private Thread messageThread;
 
     //temporally properties
     private UsbDevice ccidDevice;
     private EidCardReader eidCardReader;
+    private Object wait;
 
     @Override
     public void onCreate() {
+        Log.d(TAG, "EidService onCreate " + this);
         super.onCreate();
         usbManager = (UsbManager) getSystemService(Context.USB_SERVICE);
         notifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        powerMgr = (PowerManager) getSystemService(Context.POWER_SERVICE);
 
         (new BroadcastThread()).start();
-        (new MessageThread()).start();
-    }
-
-    @Override
-    public void onDestroy() {
-        try {
-            messenger.send(Message.obtain(null, QUIT));
-        } catch (RemoteException e) {
-            Log.w(TAG, "Failed to send the quit message", e);
-        }
-
-        super.onDestroy();
+        messageThread = new MessageThread();
+        messageThread.start();
     }
 
     @Override
     public IBinder onBind(Intent intent) {
+        Log.d(TAG, "EidService onBind " + this);
         int count = 0;
         while (count < 5 && (messenger == null || broadcast == null)) {
             SystemClock.sleep(++count * 10);
@@ -193,8 +218,48 @@ public class EidService extends Service {
         return messenger.getBinder();
     }
 
+    @Override
+    public boolean onUnbind(Intent intent) {
+        Log.d(TAG, "EidService onUnbind " + this);
+        return true;
+    }
+
+    @Override
+    public void onRebind(Intent intent) {
+        Log.d(TAG, "EidService onRebind " + this);
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.d(TAG, "EidService onDestroy " + this);
+
+        destroyed = true;
+
+        //make sure there is another message
+        try {
+            messenger.send(Message.obtain(null, QUIT));
+        } catch (RemoteException e) {
+            Log.w(TAG, "Failed to send the quit message", e);
+        }
+        //remove any lock
+        if (wait != null) {
+            synchronized (wait) {
+                wait.notify();
+            }
+        }
+
+        //wait for the message thread to stop (give up after 1s)
+        try {
+            messageThread.join(1000);
+        } catch (Exception e) {
+            Log.w(TAG, "Failed wait for the message thread to stop", e);
+        }
+
+
+        super.onDestroy();
+    }
+
     private void obtainUsbDevice() {
-        final Object wait = new Object();
         ccidDevice = null;
         List<String> unsupportedDevices = new LinkedList<>();
         Map<String, UsbDevice> deviceList = usbManager.getDeviceList();
@@ -209,19 +274,23 @@ public class EidService extends Service {
         }
 
         if (ccidDevice == null) {
-            BroadcastReceiver attachReceiver = new BroadcastReceiver() {
+            final BroadcastReceiver attachReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
                     UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
                     if (CCID.isCCIDCompliant(device)) {
                         ccidDevice = device;
+                        if (wait == null) {
+                            Log.w(TAG, "Obtained USB device without wait handler");
+                            return;
+                        }
                         synchronized (wait) {
                             wait.notify();
                         }
                     } else {
                         String product = getProductName(device);
                         NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
-                                .setSmallIcon(R.drawable.ic_stat_gen)
+                                .setSmallIcon(R.drawable.ic_stat_card)
                                 .setContentTitle(product + " is an unknown device")
                                 .setContentText("The " + product + " you connected isn't a supported (CCID) reader")
                                 .setCategory(Notification.CATEGORY_SERVICE)
@@ -233,44 +302,50 @@ public class EidService extends Service {
             registerReceiver(attachReceiver, new IntentFilter(UsbManager.ACTION_USB_DEVICE_ATTACHED), null, broadcast);
 
             NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
-                    .setSmallIcon(R.drawable.ic_stat_gen)
-                    .setContentTitle("Connect your eID reader")
+                    .setSmallIcon(R.drawable.ic_stat_card)
+                    .setContentTitle("eID Service: Connect your reader")
                     .setContentText("Please connect your eID reader to the tablet/phone")
-                    .setOngoing(true)
                     .setCategory(Notification.CATEGORY_SERVICE)
-                    .setPriority(NotificationCompat.PRIORITY_MAX);
+                    .setPriority(NotificationCompat.PRIORITY_MAX)
+                    .setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_LIGHTS);
             NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
-            inboxStyle.setBigContentTitle("Connect eID reader");
-            inboxStyle.setSummaryText("Please connect your eID reader, " +
-                    "see details for detected but unsupported devices");
+            inboxStyle.setBigContentTitle("eID Service: Connect your eID reader");
+            inboxStyle.setSummaryText("Please connect your eID reader to the tablet/phone");
+            if (unsupportedDevices.size() == 0) {
+                inboxStyle.addLine("No USB devices detected");
+            } else {
+                inboxStyle.addLine("Incompatible USB devices detected:");
+            }
             for (String device : unsupportedDevices) {
-                inboxStyle.addLine(device);
+                inboxStyle.addLine("\t" + device);
             }
             builder.setStyle(inboxStyle);
             notifyMgr.notify(1, builder.build());
 
+            wait = new Object();
             synchronized (wait) {
                 try {
-                    wait.wait(/* 10 min */ 10 * 60 * 1000);
+                    wait.wait(USB_TIMEOUT);
                 } catch (InterruptedException e) {
                     Log.e(TAG, "Interrupted while waiting for USB insert", e);
                 }
             }
+            wait = null;
 
-            notifyMgr.cancel(1);
             unregisterReceiver(attachReceiver);
-
             if (ccidDevice == null) throw new IllegalStateException("No reader connected");
         }
-
     }
 
     public void obtainUsbPermission() {
         if (!usbManager.hasPermission(ccidDevice)) {
-            final Object wait = new Object();
             BroadcastReceiver grantReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive(Context context, Intent intent) {
+                    if (wait == null) {
+                        Log.w(TAG, "Obtained USB permission without wait handler");
+                        return;
+                    }
                     synchronized (wait) {
                         wait.notify();
                     }
@@ -279,15 +354,16 @@ public class EidService extends Service {
 
             registerReceiver(grantReceiver, new IntentFilter(ACTION_USB_PERMISSION), null, broadcast);
             usbManager.requestPermission(ccidDevice, PendingIntent.getBroadcast(this, 0, new Intent(ACTION_USB_PERMISSION), 0));
+            wait = new Object();
             synchronized (wait) {
                 try {
-                    wait.wait(/* 1 minute */60 * 1000);
+                    wait.wait(CONFIRM_TIMEOUT);
                 } catch (InterruptedException e) {
                     Log.e(TAG, "Interrupted while waiting for USB grant permission", e);
                 }
             }
+            wait = null;
             unregisterReceiver(grantReceiver);
-
             if (!usbManager.hasPermission(ccidDevice)) throw new IllegalStateException("No USB permission granted");
         }
     }
@@ -299,10 +375,13 @@ public class EidService extends Service {
 
     public void obtainEidCard() {
         if (!eidCardReader.isCardPresent()) {
-            final Object wait = new Object();
             eidCardReader.setEidCardCallback(new EidCardCallback() {
                 @Override
                 public void inserted() {
+                    if (wait == null) {
+                        Log.w(TAG, "Obtained eID device without wait handler");
+                        return;
+                    }
                     synchronized (wait) {
                         wait.notify();
                     }
@@ -315,24 +394,25 @@ public class EidService extends Service {
             });
 
             NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
-                    .setSmallIcon(R.drawable.ic_stat_gen)
-                    .setContentTitle("Insert your eID")
+                    .setSmallIcon(R.drawable.ic_stat_card)
+                    .setContentTitle("eID Service: Insert your eID")
                     .setContentText(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
-                            ? "Please insert your eID in the " + getProductNameFromOs(ccidDevice) + " reader"
-                            : "Please insert your eID in the reader")
-                    .setOngoing(true)
+                            ? "Please insert your eID in your " + getProductNameFromOs(ccidDevice) + " eID reader"
+                            : "Please insert your eID in your eID reader")
                     .setCategory(Notification.CATEGORY_SERVICE)
-                    .setPriority(NotificationCompat.PRIORITY_MAX);
-            notifyMgr.notify(2, builder.build());
+                    .setPriority(NotificationCompat.PRIORITY_MAX)
+                    .setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_LIGHTS);
+            notifyMgr.notify(1, builder.build());
 
+            wait = new Object();
             synchronized (wait) {
                 try {
-                    wait.wait(/* 10 minute */ 10 * 60 * 1000);
+                    wait.wait(EID_TIMEOUT);
                 } catch (InterruptedException e) {
                     Log.e(TAG, "Interrupted while waiting for eID", e);
                 }
             }
-            notifyMgr.cancel(2);
+            wait = null;
             eidCardReader.setEidCardCallback(null);
 
             if (!eidCardReader.isCardPresent()) throw new IllegalStateException("No eID card present");

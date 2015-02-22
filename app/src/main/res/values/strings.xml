@@ -2,13 +2,69 @@
 <resources>
 
     <string name="app_name">eID Suite</string>
-    <string name="title_activity_view">ViewActivity</string>
-    <string name="title_section1">Section 1</string>
-    <string name="title_section2">Section 2</string>
-    <string name="title_section3">Section 3</string>
-    <string name="hello_world">Hello world!</string>
+    <string name="title_activity_view">eID Viewer</string>
+    <string name="title_activity_sign">eID Signer</string>
     <string name="action_settings">Settings</string>
-    <string name="title_activity_sign">SignActivity</string>
+    <string name="action_card">Card</string>
+
+    <string name="fragment_person">Person</string>
+    <string name="fragment_address">Address</string>
+    <string name="fragment_photo">Photo</string>
+    <string name="fragment_card">Card</string>
+    <string name="fragment_identity">Identity</string>
+    <string name="fragment_idandcard">Identity &amp; Card</string>
+
+    <string name="name">Name:</string>
+    <string name="gNames">Given Names:</string>
+    <string name="birthPlace">Place of birth:</string>
+    <string name="birthDate">Date of birth:</string>
+    <string name="natNumber">National Number:</string>
+    <string name="nationality">Nationality:</string>
+    <string name="title">Noble title:</string>
+    <string name="specialStatus">Special Status:</string>
+    <string name="sex">Sex:</string>
+
+    <string name="street">Street:</string>
+    <string name="zip">Postal code:</string>
+    <string name="municipality">Municipality:</string>
+
+    <string name="photoDesc">eID Photo</string>
+
+    <string name="cardnr">Card number:</string>
+    <string name="issuePlace">Place of issue:</string>
+    <string name="chipnr">Chip number:</string>
+    <string name="validFrom">Valid from:</string>
+    <string name="validTo">Valid until:</string>
+
+    <string name="usage">Usages:</string>
+
+    <string name="status_whiteCane">white cane</string>
+    <string name="status_yellowCane">yellow cane</string>
+    <string name="status_extMinority">extended minority</string>
+
+    <string name="cardtype_citizen">IDENTITY CARD</string>
+    <string name="cardtype_kids">KIDS CARD</string>
+    <string name="cardtype_a">FOREIGNER CARD A</string>
+    <string name="cardtype_b">FOREIGNER CARD B</string>
+    <string name="cardtype_c">FOREIGNER CARD C</string>
+    <string name="cardtype_d">FOREIGNER CARD D</string>
+    <string name="cardtype_e">FOREIGNER CARD E</string>
+    <string name="cardtype_eplus">FOREIGNER CARD E+</string>
+    <string name="cardtype_f">FOREIGNER CARD F</string>
+    <string name="cardtype_fplus">FOREIGNER CARD F+</string>
+
+    <string name="sex_male">Male</string>
+    <string name="sex_female">Female</string>
+
+    <string name="usage_digitalSignature">digital signature</string>
+    <string name="usage_nonRepudiation">non repudiation</string>
+    <string name="usage_keyEncipherment">key encipherement</string>
+    <string name="usage_dataEncipherment">data encipherment</string>
+    <string name="usage_keyAgreement">key agreement</string>
+    <string name="usage_keyCertSign">certificate signing</string>
+    <string name="usage_cRLSign">CRL signing</string>
+    <string name="usage_encipherOnly">encipher only</string>
+    <string name="usage_decipherOnly">decipher only</string>
 
     <string name="class_audio">audio device</string>
     <string name="class_cdc_data">(CDC) communication device</string>
@@ -24,4 +80,5 @@
     <string name="class_unknown">unknown</string>
     <string name="class_video">video device</string>
     <string name="class_wireless_controller">wireless controller device</string>
+
 </resources>

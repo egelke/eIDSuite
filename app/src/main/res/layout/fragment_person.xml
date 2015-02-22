@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="5dp"
+    tools:context=".view.PersonFragment">
+
+    <ProgressBar
+        android:id="@+id/loading_person"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
+    <TableLayout
+        android:id="@+id/person_data"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:minWidth="320dp">
+
+        <TextView
+            android:id="@+id/idType"
+            android:gravity="center"
+            android:text="-"
+            android:textAppearance="?android:attr/textAppearanceLarge" />
+
+        <TableRow>
+
+            <TextView
+                android:gravity="right"
+                android:minWidth="120dp"
+                android:text="@string/name" />
+
+            <TextView android:id="@+id/name" />
+        </TableRow>
+
+        <TableRow>
+
+            <TextView
+                android:gravity="right"
+                android:text="@string/gNames" />
+
+            <TextView android:id="@+id/gNames" />
+        </TableRow>
+
+        <TableRow>
+
+            <TextView
+                android:gravity="right"
+                android:text="@string/birthPlace" />
+
+            <TextView android:id="@+id/birthPlace" />
+        </TableRow>
+
+        <TableRow>
+
+            <TextView
+                android:gravity="right"
+                android:text="@string/birthDate" />
+
+            <TextView android:id="@+id/birthDate" />
+        </TableRow>
+
+        <TableRow>
+
+            <TextView
+                android:gravity="right"
+                android:text="@string/sex" />
+
+            <TextView android:id="@+id/sex" />
+        </TableRow>
+
+        <TableRow>
+
+            <TextView
+                android:gravity="right"
+                android:text="@string/natNumber" />
+
+            <TextView android:id="@+id/natNumber" />
+        </TableRow>
+
+        <TableRow>
+
+            <TextView
+                android:gravity="right"
+                android:text="@string/nationality" />
+
+            <TextView android:id="@+id/nationality" />
+        </TableRow>
+
+        <TableRow>
+
+            <TextView
+                android:gravity="right"
+                android:text="@string/title" />
+
+            <TextView android:id="@+id/title" />
+        </TableRow>
+
+        <TableRow>
+
+            <TextView
+                android:gravity="right"
+                android:text="@string/specialStatus" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <CheckBox
+                    android:id="@+id/status_whiteCane"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:clickable="false"
+                    android:text="@string/status_whiteCane"
+                    android:textAppearance="?android:attr/textAppearanceSmall" />
+
+                <CheckBox
+                    android:id="@+id/status_yellowCane"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:clickable="false"
+                    android:text="@string/status_yellowCane"
+                    android:textAppearance="?android:attr/textAppearanceSmall" />
+
+                <CheckBox
+                    android:id="@+id/status_extMinority"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:clickable="false"
+                    android:text="@string/status_extMinority"
+                    android:textAppearance="?android:attr/textAppearanceSmall" />
+            </LinearLayout>
+        </TableRow>
+
+    </TableLayout>
+</LinearLayout>

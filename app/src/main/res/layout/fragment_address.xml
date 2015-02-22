@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    tools:context=".AddressFragment"
+    android:padding="5dp">
+
+    <ProgressBar
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/loading_address"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
+<TableLayout
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:id="@+id/address_data"
+    android:layout_gravity="center"
+    android:minWidth="320dp">
+
+    <TableRow>
+
+        <TextView
+            android:gravity="right"
+            android:text="@string/street"
+            android:minWidth="120dp" />
+
+        <TextView
+            android:id="@+id/street"
+            android:maxLines="4"
+            android:singleLine="false"/>
+    </TableRow>
+
+    <TableRow>
+
+        <TextView
+            android:gravity="right"
+            android:text="@string/zip" />
+
+        <TextView
+            android:id="@+id/zip"/>
+    </TableRow>
+
+    <TableRow>
+
+        <TextView
+            android:gravity="right"
+            android:text="@string/municipality" />
+
+        <TextView
+            android:id="@+id/municipality" />
+    </TableRow>
+
+</TableLayout>
+</LinearLayout>

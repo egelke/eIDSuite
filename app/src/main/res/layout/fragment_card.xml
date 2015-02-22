@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    tools:context=".view.ViewActivity"
+    android:padding="5dp">
+
+    <ProgressBar
+        android:id="@+id/loading_card"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
+    <TableLayout
+        android:id="@+id/card_data"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minWidth="320dp">
+
+        <TableRow>
+
+            <TextView
+                android:gravity="right"
+                android:minWidth="120dp"
+                android:text="@string/cardnr" />
+
+            <TextView android:id="@+id/cardnr" />
+        </TableRow>
+
+        <TableRow>
+
+            <TextView
+                android:gravity="right"
+                android:text="@string/issuePlace" />
+
+            <TextView android:id="@+id/issuePlace" />
+        </TableRow>
+
+        <TableRow>
+
+            <TextView
+                android:gravity="right"
+                android:text="@string/chipnr" />
+
+            <TextView
+                android:id="@+id/chipnr"
+                android:singleLine="false" />
+
+        </TableRow>
+
+        <TableRow>
+
+            <TextView
+                android:gravity="right"
+                android:text="@string/validFrom" />
+
+            <TextView android:id="@+id/validFrom" />
+        </TableRow>
+
+        <TableRow>
+
+            <TextView
+                android:gravity="right"
+                android:text="@string/validTo" />
+
+            <TextView android:id="@+id/validTo" />
+        </TableRow>
+    </TableLayout>
+</LinearLayout>
