@@ -237,6 +237,11 @@ public class ViewActivity extends ActionBarActivity {
         try {
             switch(item.getItemId()) {
                 case R.id.action_card:
+                    ViewModel.start(Person.class.getName());
+                    ViewModel.start(Card.class.getName());
+                    ViewModel.start(Address.class.getName());
+                    ViewModel.start("Photo");
+
                     Message msg = Message.obtain(null, EidService.READ_DATA, 0, 0);
                     msg.replyTo = mEidServiceResponse;
                     msg.getData().putBoolean(FileId.IDENTITY.name(), true);
