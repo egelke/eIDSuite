@@ -26,9 +26,9 @@ public final class ViewModel {
 
     private ViewModel() { }
 
-    private static Hashtable<String, Object> data = new Hashtable<>();
+    private static Hashtable<String, Object> data = new Hashtable<String, Object>();
 
-    private static List<UpdateListener> listeners = new LinkedList<>();
+    private static List<UpdateListener> listeners = new LinkedList<UpdateListener>();
 
     public static void start(String key) {
         for(UpdateListener listener : listeners) {

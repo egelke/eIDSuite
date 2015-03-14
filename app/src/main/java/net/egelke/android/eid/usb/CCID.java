@@ -111,6 +111,8 @@ public class CCID implements Closeable {
         usbConnection.claimInterface(usbInterface, true);
         sequence = 0;
 
+        byte[] rawDescriptor = usbConnection.getRawDescriptors();
+
         //Get the interfaces
         for (int i = 0; i < usbInterface.getEndpointCount(); i++) {
             UsbEndpoint usbEp = usbInterface.getEndpoint(i);
@@ -226,25 +228,7 @@ public class CCID implements Closeable {
     }
 
     private SlotStatus parseSlotStatus(byte[] rsp) throws IOException {
-        if (rsp.length < 10) {
-            throw new IOException("The response is to short");
-        }
-
-        if (rsp[0] != (byte)0x81) {
-            throw new IOException(String.format("Illegal CCID reader response (wrong type: %x)", rsp[0]));
-        }
-
-        if (rsp[6] != (byte)sequence) {
-            throw new IOException(String.format("Illegal CCID reader response (wrong sequence: %x vs %x)", rsp[6], sequence));
-        }
-
-        if ((rsp[7] & (byte)0x03) == 0x01 && rsp[8] == 0x00) {
-            throw new UnsupportedOperationException("command not supported by the reader");
-        }
-
-        if ((rsp[7] & (byte)0x03) != 0x00) {
-            throw new IOException(String.format("Command Error (%x) returned by the CCID reader: %x", rsp[7], rsp[8]));
-        }
+        validateResponse(rsp, (byte)0x81, true);
 
         switch(rsp[7] & (byte) 0xC0) {
             case 0x80:
@@ -259,25 +243,34 @@ public class CCID implements Closeable {
     }
 
     private byte[] parseDataBlock(byte[] rsp) throws IOException {
+        validateResponse(rsp, (byte)0x80, false);
+
+        byte[] newRsp = new byte[rsp.length - 10];
+        System.arraycopy(rsp, 10, newRsp, 0, newRsp.length);
+        return newRsp;
+    }
+
+    private void validateResponse(byte[] rsp, byte type, boolean ignoreSlotStatus) throws IOException {
         if (rsp.length < 10) {
             throw new IOException("The response is to short");
         }
 
-        if (rsp[0] != (byte)0x80) {
+        if (rsp[0] != type) {
             throw new IOException("Illegal CCID reader response (wrong type)");
         }
         if (rsp[6] != (byte)sequence) {
             throw new IOException("Illegal CCID reader response (wrong sequence)");
         }
-        if ((rsp[7] & (byte)0xC0) != 0x00) {
-            throw new IOException(String.format("Slot Error returned by the CCID reader: %x", rsp[7] & 0xC0));
+        if ((rsp[7] & (byte)0x03) == 0x01 && rsp[8] == 0x00) {
+            throw new UnsupportedOperationException("command not supported by the reader");
         }
         if ((rsp[7] & (byte)0x03) != 0x00) {
             throw new IOException(String.format("Command Error returned by the CCID reader: %x", rsp[8]));
         }
-
-        byte[] newRsp = new byte[rsp.length - 10];
-        System.arraycopy(rsp, 10, newRsp, 0, newRsp.length);
-        return newRsp;
+        if (!ignoreSlotStatus) {
+            if ((rsp[7] & (byte)0xC0) != 0x00) {
+                throw new IOException(String.format("Slot Error returned by the CCID reader: %x", rsp[7] & 0xC0));
+            }
+        }
     }
 }

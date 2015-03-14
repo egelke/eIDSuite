@@ -1,6 +1,6 @@
 /*
     This file is part of eID Suite.
-    Copyright (C) 2014 Egelke BVBA
+    Copyright (C) 2015 Egelke BVBA
 
     eID Suite is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -15,17 +15,19 @@
     You should have received a copy of the GNU Affero General Public License
     along with eID Suite.  If not, see <http://www.gnu.org/licenses/>.
 */
-package net.egelke.android.eid.reader;
+package net.egelke.android.eid.jca;
 
 
-import net.egelke.android.eid.UserCancelException;
+import android.os.Messenger;
 
-public interface PinCallback {
-    /**
-     * Called to get the PIN from the user.
-     * The method may throw an exception to cancel.
-     * @param retries The number of retries left, -1 is unknown
-     * @return The PIN as chars ('0', '1', ...)
-     */
-    char[] getPin(int retries) throws UserCancelException;
+import javax.net.ssl.ManagerFactoryParameters;
+
+public class BeIDManagerFactoryParameters implements ManagerFactoryParameters {
+
+    Messenger mEidService;
+
+    public BeIDManagerFactoryParameters(Messenger eidService) {
+        mEidService = eidService;
+    }
+
 }

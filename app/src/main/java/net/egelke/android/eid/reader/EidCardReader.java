@@ -22,6 +22,7 @@ import android.hardware.usb.UsbManager;
 import android.util.Log;
 
 import net.egelke.android.eid.CardBlockedException;
+import net.egelke.android.eid.UserCancelException;
 import net.egelke.android.eid.belpic.FileId;
 import net.egelke.android.eid.model.Address;
 import net.egelke.android.eid.model.Identity;
@@ -41,16 +42,38 @@ public class EidCardReader implements Closeable {
 
     private static final String TAG = "net.egelke.android.eid";
 
+    public static enum Key {
+        AUTHENTICATION,
+        NON_REPUDIATION
+    }
+
+    public static enum DigestAlg {
+        SHA1,
+        SHA256
+    }
+
+    //https://www.eftlab.com.au/index.php/site-map/knowledge-base/118-apdu-response-list
+    private static enum ApduSwCode {
+        OK,
+        VerifyFail,
+        SecConNotSatisfied,
+        AuthBlocked,
+        WrongParamP1P2,
+        BadLengthLeCorrectIsXX
+    }
+
     private static final Map<FileId, byte[]> FILES;
-	private static final byte[] READ_BINARY = {0x00, (byte) 0xB0, 0x00, 0x00, (byte)0x00};
-    private static final byte[] INIT_SIGN_NONREP_RAWPKCS1 = {0x00, 0x22, 0x41, (byte)0xB6, 0x04, (byte)0x80, 0x10 /*RSA-SSA with prepared EMSA*/, (byte) 0x84, (byte) 0x83 /*NON REPUDIATION KEY*/};
-    private static final byte[] DO_SIGN_EMSA_SHA256 = {0x00, 0x2A, (byte) 0x9E, (byte) 0x9A, 0x30, 0x2f, 0x30, 0x0b,0x06, 0x09, 0x60, (byte) 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x04, 0x20};
-    private static final byte[] VERIFY_PIN = {0x00, 0x20, 0x00, 0x01, 0x20, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
+	private static final byte[] READ_BINARY = {0x00, (byte) 0xB0, 0x00, 0x00, (byte)0x00/*len*/};
+    private static final byte[] INIT_SIGN_AUTH_RAWPKCS1 = {0x00, 0x22, 0x41, (byte)0xB6, 0x04/*len*/, (byte)0x80, 0x10 /*RSA-SSA with prepared EMSA*/, (byte) 0x84, (byte) 0x82 /*AUTHENTICATION KEY*/};
+    private static final byte[] INIT_SIGN_NONREP_RAWPKCS1 = {0x00, 0x22, 0x41, (byte)0xB6, 0x04/*len*/, (byte)0x80, 0x10 /*RSA-SSA with prepared EMSA*/, (byte) 0x84, (byte) 0x83 /*NON REPUDIATION KEY*/};
+    private static final byte[] DO_SIGN_EMSA_SHA1 = {0x00, 0x2A, (byte) 0x9E, (byte) 0x9A, 0x11/*len*/, 0x30, 0x1f, 0x30, 0x07, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x04, 0x14, 0x02, 0x01, 0x04, 0x20};
+    private static final byte[] DO_SIGN_EMSA_SHA256 = {0x00, 0x2A, (byte) 0x9E, (byte) 0x9A, 0x11/*len*/, 0x30, 0x2f, 0x30, 0x0b, 0x06, 0x09, 0x60, (byte) 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x04, 0x20};
+    private static final byte[] VERIFY_PIN = {0x00, 0x20, 0x00, 0x01, 0x08 /*len*/, 0x20, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
     private static final byte[] ATR_PATTERN = { (byte) 0x3b, (byte) 0x98, 0x00, (byte) 0x40, 0x00, (byte) 0x00, 0x00, 0x00, (byte) 0x01, (byte) 0x01, (byte) 0xad, (byte) 0x13, (byte) 0x10 };
     private static final byte[] ATR_MASK    = { (byte) 0xff, (byte) 0xff, 0x00, (byte) 0xff, 0x00, (byte) 0x00, 0x00, 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xf0 };
 
     static {
-        FILES = new Hashtable<>();
+        FILES = new Hashtable<FileId, byte[]>();
         FILES.put(FileId.IDENTITY, new byte[]{0x00, (byte) 0xA4, 0x08, 0x0C, 0x06, 0x3F, 0x00, (byte) 0xDF, 0x01, 0x40, 0x31});
         FILES.put(FileId.ADDRESS, new byte[]{0x00, (byte) 0xA4, 0x08, 0x0C, 0x06, 0x3F, 0x00, (byte) 0xDF, 0x01, 0x40, 0x33});
         FILES.put(FileId.PHOTO, new byte[]{0x00, (byte) 0xA4, 0x08, 0x0C, 0x06, 0x3F, 0x00, (byte) 0xDF, 0x01, 0x40, 0x35});
@@ -204,33 +227,53 @@ public class EidCardReader implements Closeable {
 		return readFileRaw(FileId.PHOTO);
 	}
 
-    public synchronized byte[] signSha256Pkcs1(byte[] hash) throws IOException {
-        //Prepare the card for signing (fixed usage of Signature Key)
-        byte[] rsp = cardReader.transmitApdu(INIT_SIGN_NONREP_RAWPKCS1);
-        if (rsp.length != 2) {
-            Log.e(TAG, "APDU init sign command did not return 2 bytes but: " + rsp.length);
-            throw new IOException("The card returned an invalid response");
+    public synchronized byte[] signPkcs1(byte[] hash, DigestAlg alg, Key key) throws IOException, UserCancelException {
+        //Prepare the card for signing
+        byte[] rsp;
+        switch (key) {
+            case NON_REPUDIATION:
+                rsp = cardReader.transmitApdu(INIT_SIGN_NONREP_RAWPKCS1);
+                break;
+            case AUTHENTICATION:
+                rsp = cardReader.transmitApdu(INIT_SIGN_AUTH_RAWPKCS1);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown key type");
         }
-        if (rsp[rsp.length - 2] != ((byte) 0x90) || rsp[rsp.length - 2] != 0x0) {
-            Log.e(TAG, String.format("APDU init sign command failed: %X %X", rsp[0], rsp[1]));
-            throw new IOException("The card returned an error: " + rsp[0]);
+        if (validateResponse(rsp) != ApduSwCode.OK) {
+            throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
         }
 
-        //Unlock the card with the pin
-        verifyPin();
+        //Unlock the card with the pin if needed
+        if (key == Key.NON_REPUDIATION) verifyPin();
 
         //Calculate the signature
-        byte [] cmd = new byte[DO_SIGN_EMSA_SHA256.length + hash.length];
+        byte [] cmd;
+        switch (alg) {
+            case SHA1:
+                cmd = new byte[DO_SIGN_EMSA_SHA1.length + hash.length];
+                break;
+            case SHA256:
+                cmd = new byte[DO_SIGN_EMSA_SHA256.length + hash.length];
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown digest algorithm");
+        }
         System.arraycopy(DO_SIGN_EMSA_SHA256, 0, cmd, 0, DO_SIGN_EMSA_SHA256.length);
         System.arraycopy(hash, 0, cmd, DO_SIGN_EMSA_SHA256.length, hash.length);
         rsp = cardReader.transmitApdu(cmd);
-        if (rsp.length != 2) {
-            Log.e(TAG, "APDU do sign command did not return 2 bytes but: " + rsp.length);
-            throw new IOException("The card returned an invalid response");
-        }
-        if (rsp[rsp.length - 2] != ((byte) 0x90) || rsp[rsp.length - 2] != 0x0) {
-            Log.e(TAG, String.format("APDU do sign command failed: %X %X", rsp[0], rsp[1]));
-            throw new IOException("The card returned an error: " + rsp[0]);
+        switch (validateResponse(rsp)) {
+            case OK:
+                break;
+            case SecConNotSatisfied:
+                verifyPin();
+                rsp = cardReader.transmitApdu(cmd);
+                if (validateResponse(rsp) != ApduSwCode.OK) {
+                    throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
+                }
+                break;
+            default:
+                throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
         }
 
         byte[] rspData = new byte[rsp.length-2];
@@ -238,35 +281,32 @@ public class EidCardReader implements Closeable {
         return rspData;
     }
 
-    public void verifyPin() throws IOException {
+    public void verifyPin() throws IOException, UserCancelException {
         int retries = -1;
-        boolean verified = false;
-        while (!verified) {
+        while (true) {
             char[] pin = pinCallback.getPin(retries);
             byte[] cmd = Arrays.copyOf(VERIFY_PIN, VERIFY_PIN.length);
-            cmd[4] = (byte) (cmd[4] | pin.length);
+            cmd[5] = (byte) (cmd[5] | pin.length);
             for (int idx = 0; idx < pin.length; idx += 2) {
-                byte digit1 = (byte) (pin[idx] - '0' << 4);
+                byte digit1 = (byte) ((pin[idx] - '0') << 4);
                 byte digit2 = idx + 1 < pin.length ? (byte) (pin[idx + 1] - '0') : 0x0F;
-                cmd[idx / 2 + 5] = (byte) (digit1 | digit2);
+                cmd[idx / 2 + 6] = (byte) (digit1 | digit2);
             }
+
             //Erase pin from memory
             Arrays.fill(pin, (char) 0);
             try {
                 byte[] rsp = cardReader.transmitApdu(cmd);
-                if (rsp.length != 2) {
-                    Log.e(TAG, "APDU verify pin command did not return 2 bytes but: " + rsp.length);
-                    throw new IOException("The card returned an invalid response");
-                } else if (rsp[0] == (byte) 0x69 && rsp[1] == (byte) 0x83) {
-                    Log.w(TAG, String.format("APDU verify pin command indicated that the card was blocked: %X %X", rsp[0], rsp[1]));
-                    throw new CardBlockedException("The key on the card is blocked (to many tries)");
-                } else if (rsp[0] == (byte) 0x63) {
-                    retries = rsp[1] & 0x0F;
-                } else if (rsp[0] != ((byte) 0x90) || rsp[1] != 0x0) {
-                    Log.e(TAG, String.format("APDU select file command failed: %X %X", rsp[0], rsp[1]));
-                    throw new IOException("The card returned an error: " + rsp[0]);
-                } else {
-                    verified = true;
+                switch (validateResponse(rsp)) {
+                    case OK:
+                        return;
+                    case VerifyFail:
+                        retries = rsp[1] & 0x0F;
+                        break;
+                    case AuthBlocked:
+                        throw new CardBlockedException("The key on the card is blocked (to many tries)");
+                    default:
+                        throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
                 }
             } finally {
                 //Erase pin from memory
@@ -277,49 +317,68 @@ public class EidCardReader implements Closeable {
 	
 	private void selectFile(byte[] cmd) throws IOException {
 		byte[] rsp = cardReader.transmitApdu(cmd);
-		if (rsp.length != 2) {
-			Log.e(TAG, "APDU select file command did not return 2 bytes but: " + rsp.length);
-			throw new IOException("The card returned an invalid response");
-		}
-		if (rsp[0] != ((byte) 0x90) || rsp[1] != 0x0) {
-			Log.e(TAG, String.format("APDU select file command failed: %X %X", rsp[0], rsp[1]));
-			throw new IOException("The card returned an error: " + rsp[0]);
-		}
+        if (validateResponse(rsp) != ApduSwCode.OK) {
+            throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
+        }
 	}
 	
 	private byte[] readSelectedFile() throws IOException {
         byte[] rsp;
 		int offset = 0;
+        ApduSwCode status;
 		byte[] cmd = Arrays.copyOf(READ_BINARY, READ_BINARY.length);
 		ByteArrayOutputStream idFileOut = new ByteArrayOutputStream();
 		do {
 			cmd[2] = (byte) (offset >> 8);
 			cmd[3] = (byte) (offset & 0xFF);
 			rsp = cardReader.transmitApdu(cmd);
-			if (rsp.length < 2) {
-				Log.e(TAG, "APDU read identify file command did return less then 2 bytes: " + rsp.length);
-				throw new IOException("The card return an invalid response");
-			}
-			Log.d(TAG, String.format("Result %X %X, data length: %d", rsp[rsp.length - 2], rsp[rsp.length - 1], rsp.length));
-			if (rsp[rsp.length - 2] == ((byte) 0x6B) && rsp[rsp.length - 1] == 0x0) {
-				// Finished, there where no more bytes
-				break;
-			}
-			if (rsp[rsp.length - 2] == ((byte) 0x6C)) {
-				// Almost finished, reading less
-				cmd[4] = rsp[1];
-				continue;
-			}
-
-			if ((rsp[rsp.length - 2] != ((byte) 0x90) || rsp[rsp.length - 1] != 0x0)) {
-				throw new IOException("The card returned an error: " + rsp[0]);
-			}
-			idFileOut.write(rsp, 0, rsp.length - 2);
-			offset += rsp.length - 2;
-		} while (rsp.length == 258 || rsp[0] == ((byte) 0x6C));
+            status = validateResponse(rsp);
+            switch (status) {
+                case OK:
+                    idFileOut.write(rsp, 0, rsp.length - 2);
+                    offset += rsp.length - 2;
+                    break;
+                case WrongParamP1P2:
+                    //Finished, there where no more bytes (we passed the end of the file)
+                    break;
+                case BadLengthLeCorrectIsXX:
+                    cmd[4] = rsp[1];
+                    break;
+                default:
+                    throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
+            }
+		} while (status == ApduSwCode.BadLengthLeCorrectIsXX
+                || (status == ApduSwCode.OK && rsp.length == 258));
 
 		Log.d(TAG, String.format("File read (len %d)", idFileOut.toByteArray().length));
 		return idFileOut.toByteArray();
 	}
+
+    private ApduSwCode validateResponse(byte[] rsp) throws IOException {
+        if (rsp.length != 2) {
+            Log.e(TAG, "APDU select file command did not return 2 bytes but: " + rsp.length);
+            throw new IOException("The card returned an invalid response");
+        } else if (rsp[0] == ((byte) 0x90) && rsp[1] == 0x00) {
+            return ApduSwCode.OK;
+        } else if (rsp[0] ==((byte)0x63) && (rsp[1] & 0xF0) == 0xC0) {
+            Log.i(TAG, String.format("Verify fail, %X tries left.", rsp[1] & 0x0F));
+            return ApduSwCode.VerifyFail;
+        } else if (rsp[0] == ((byte) 0x69) && rsp[1] == ((byte)0x82)) {
+            Log.w(TAG, "Security condition not satisfied");
+            return ApduSwCode.SecConNotSatisfied;
+        } else if (rsp[0] == ((byte) 0x69) && rsp[1] == ((byte)0x83)) {
+            Log.w(TAG, "Authentication method blocked");
+            return ApduSwCode.AuthBlocked;
+        } else if (rsp[rsp.length - 2] == ((byte) 0x6B) && rsp[rsp.length - 1] == 0x0) {
+            Log.w(TAG, "APDU wrong parameter(s) P1-P2");
+            return ApduSwCode.WrongParamP1P2;
+        } else if (rsp[rsp.length - 2] == ((byte) 0x6C)) {
+            Log.d(TAG, String.format("APDU Bad length value in Le; 'xx' is the correct exact Le", rsp[rsp.length-1]));
+            return ApduSwCode.BadLengthLeCorrectIsXX;
+        } else {
+            Log.w(TAG, String.format("APDU select file command failed: %X %X", rsp[0], rsp[1]));
+            throw new IOException("The card returned an error: " + rsp[0]);
+        }
+    }
 
 }

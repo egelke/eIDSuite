@@ -41,15 +41,18 @@ import android.os.RemoteException;
 import android.os.SystemClock;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
+import android.widget.Toast;
 
 import net.egelke.android.eid.belpic.FileId;
 import net.egelke.android.eid.reader.EidCardCallback;
 import net.egelke.android.eid.reader.EidCardReader;
+import net.egelke.android.eid.reader.PinCallback;
 import net.egelke.android.eid.usb.CCID;
+import net.egelke.android.eid.view.PinActivity;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -60,9 +63,11 @@ public class EidService extends Service {
 
     private static final String TAG = "net.egelke.android.eid";
     private static final String ACTION_USB_PERMISSION = "net.egelke.android.eid.USB_PERMISSION";
-    private static final long USB_TIMEOUT = 10 * 60 * 1000; //10 MIN
-    private static final long EID_TIMEOUT = 10 * 60 * 1000; //10 MIN
+    private static final String ACTION_PIN_PROVIDED = "net.egelke.android.eid.PIN_PROVIDED";
+    private static final long USB_TIMEOUT = 1 * 60 * 1000; //1 MIN
+    private static final long EID_TIMEOUT = 1 * 60 * 1000; //1 MIN
     private static final long CONFIRM_TIMEOUT = 1 * 60 * 1000; //1MIN
+    private static final long PIN_TIMEOUT = 1 * 60 * 1000; //1MIN
 
     //Internal
     private static final int QUIT = 0;
@@ -70,6 +75,7 @@ public class EidService extends Service {
     //Actions
     public static final int READ_DATA = 1;
     public static final int VERIFY_CARD = 3;
+    public static final int VERIFY_PIN = 5;
     public static final int SIGN_PDF = 11;
 
     //Action Response
@@ -117,6 +123,16 @@ public class EidService extends Service {
                             for (FileId fileId : FileId.values()) {
                                 replyIfNeeded(msg, fileId);
                             }
+                            break;
+                        case VERIFY_PIN:
+                            builder = new NotificationCompat.Builder(EidService.this)
+                                    .setSmallIcon(R.drawable.ic_stat_card)
+                                    .setContentTitle("eID Service: Verify PIN")
+                                    .setContentText("The PIN of your eID is being verified")
+                                    .setCategory(Notification.CATEGORY_SERVICE);
+                            notifyMgr.notify(1, builder.build());
+                            verifyPin(msg);
+                            break;
                         case SIGN_PDF:
                             //TODO
                             break;
@@ -137,7 +153,7 @@ public class EidService extends Service {
         }
 
         private void replyIfNeeded(Message msg, FileId file) throws RemoteException, IOException, CertificateException {
-            if (msg.getData().getBoolean(file.name(), false)) {
+            if (msg.getData().size() == 0 || msg.getData().getBoolean(file.name(), false)) {
                 byte[] bytes = eidCardReader.readFileRaw(file);
                 Object data = file.parse(bytes);
 
@@ -146,10 +162,21 @@ public class EidService extends Service {
                     rsp.getData().putParcelable(file.name(), (Parcelable)data);
                 else if (data instanceof byte[])
                     rsp.getData().putByteArray(file.name(), (byte[])data);
-                else if (data instanceof Serializable)
-                    rsp.getData().putSerializable(file.name(), (Serializable)data);
+                else if (data instanceof X509Certificate)
+                    rsp.getData().putByteArray(file.name(), ((X509Certificate)data).getEncoded());
 
                 msg.replyTo.send(rsp);
+            }
+        }
+
+        private void verifyPin(Message msg) throws IOException {
+            try {
+                eidCardReader.verifyPin();
+                Toast.makeText(EidService.this, "PIN Valid", Toast.LENGTH_SHORT).show();
+            } catch (UserCancelException uce) {
+                Toast.makeText(EidService.this, "PIN verification canceled", Toast.LENGTH_LONG).show();
+            } catch (CardBlockedException cbe) {
+                Toast.makeText(EidService.this, "eID Card Blocked!", Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -194,6 +221,7 @@ public class EidService extends Service {
     private UsbDevice ccidDevice;
     private EidCardReader eidCardReader;
     private Object wait;
+    private String pin;
 
     @Override
     public void onCreate() {
@@ -261,7 +289,7 @@ public class EidService extends Service {
 
     private void obtainUsbDevice() {
         ccidDevice = null;
-        List<String> unsupportedDevices = new LinkedList<>();
+        List<String> unsupportedDevices = new LinkedList<String>();
         Map<String, UsbDevice> deviceList = usbManager.getDeviceList();
         Iterator<UsbDevice> deviceIterator = deviceList.values().iterator();
         while (ccidDevice == null && deviceIterator.hasNext()) {
@@ -320,9 +348,9 @@ public class EidService extends Service {
                 inboxStyle.addLine("\t" + device);
             }
             builder.setStyle(inboxStyle);
-            notifyMgr.notify(1, builder.build());
 
             wait = new Object();
+            notifyMgr.notify(1, builder.build());
             synchronized (wait) {
                 try {
                     wait.wait(USB_TIMEOUT);
@@ -352,9 +380,9 @@ public class EidService extends Service {
                 }
             };
 
+            wait = new Object();
             registerReceiver(grantReceiver, new IntentFilter(ACTION_USB_PERMISSION), null, broadcast);
             usbManager.requestPermission(ccidDevice, PendingIntent.getBroadcast(this, 0, new Intent(ACTION_USB_PERMISSION), 0));
-            wait = new Object();
             synchronized (wait) {
                 try {
                     wait.wait(CONFIRM_TIMEOUT);
@@ -371,6 +399,49 @@ public class EidService extends Service {
     public void obtainEidReader() throws IOException {
         eidCardReader = new EidCardReader(usbManager, ccidDevice);
         eidCardReader.open();
+        eidCardReader.setPinCallback(new PinCallback() {
+            @Override
+            public char[] getPin(int retries) throws UserCancelException {
+                BroadcastReceiver pinReceiver = new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        pin = intent.getStringExtra(PinActivity.EXTRA_PIN);
+                        if (wait == null) {
+                            Log.w(TAG, "Obtained PIN without wait handler");
+                            return;
+                        }
+                        synchronized (wait) {
+                            wait.notify();
+                        }
+                    }
+                };
+
+                wait = new Object();
+                registerReceiver(pinReceiver, new IntentFilter(ACTION_PIN_PROVIDED), null, broadcast);
+                Intent dialogIntent = new Intent(getBaseContext(), PinActivity.class);
+                dialogIntent.putExtra(PinActivity.EXTRA_RETRIES, retries);
+                dialogIntent.putExtra(PinActivity.EXTRA_BROADCAST,
+                        PendingIntent.getBroadcast(EidService.this, 0, new Intent(ACTION_PIN_PROVIDED), 0));
+                dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getApplication().startActivity(dialogIntent);
+
+                synchronized (wait) {
+                    try {
+                        wait.wait(PIN_TIMEOUT);
+                    } catch (InterruptedException e) {
+                        Log.e(TAG, "Interrupted while waiting for PIN", e);
+                    }
+                }
+                wait = null;
+                unregisterReceiver(pinReceiver);
+                if (pin == null) throw new UserCancelException("No PIN provided");
+                try {
+                    return pin.toCharArray();
+                } finally {
+                    pin = null;
+                }
+            }
+        });
     }
 
     public void obtainEidCard() {
@@ -402,9 +473,9 @@ public class EidService extends Service {
                     .setCategory(Notification.CATEGORY_SERVICE)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_LIGHTS);
-            notifyMgr.notify(1, builder.build());
 
             wait = new Object();
+            notifyMgr.notify(1, builder.build());
             synchronized (wait) {
                 try {
                     wait.wait(EID_TIMEOUT);

@@ -4,8 +4,13 @@
     <string name="app_name">eID Suite</string>
     <string name="title_activity_view">eID Viewer</string>
     <string name="title_activity_sign">eID Signer</string>
+    <string name="title_activity_auth">eID Authenticator</string>
+
     <string name="action_settings">Settings</string>
     <string name="action_card">Card</string>
+    <string name="action_pin">Verify PIN</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_ok">OK</string>
 
     <string name="fragment_person">Person</string>
     <string name="fragment_address">Address</string>
@@ -80,5 +85,9 @@
     <string name="class_unknown">unknown</string>
     <string name="class_video">video device</string>
     <string name="class_wireless_controller">wireless controller device</string>
+    <string name="title_activity_activity_pin">PIN</string>
+
+    <string name="hello_world">Hello world!</string>
+    <string name="title_activity_pin">PIN</string>
 
 </resources>

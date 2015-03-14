@@ -26,6 +26,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
+import android.os.SystemClock;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -235,6 +236,14 @@ public class ViewActivity extends ActionBarActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         try {
+            if (mEidService == null) {
+                //TODO:toast!
+                return false;
+            }
+
+            Message msg;
+
+
             switch(item.getItemId()) {
                 case R.id.action_card:
                     ViewModel.start(Person.class.getName());
@@ -242,11 +251,15 @@ public class ViewActivity extends ActionBarActivity {
                     ViewModel.start(Address.class.getName());
                     ViewModel.start("Photo");
 
-                    Message msg = Message.obtain(null, EidService.READ_DATA, 0, 0);
+                    msg = Message.obtain(null, EidService.READ_DATA, 0, 0);
                     msg.replyTo = mEidServiceResponse;
                     msg.getData().putBoolean(FileId.IDENTITY.name(), true);
                     msg.getData().putBoolean(FileId.ADDRESS.name(), true);
                     msg.getData().putBoolean(FileId.PHOTO.name(), true);
+                    mEidService.send(msg);
+                    return true;
+                case R.id.action_pin:
+                    msg = Message.obtain(null, EidService.VERIFY_PIN, 0, 0);
                     mEidService.send(msg);
                     return true;
                 default:

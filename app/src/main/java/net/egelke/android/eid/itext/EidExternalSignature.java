@@ -19,6 +19,7 @@ package net.egelke.android.eid.itext;
 
 import com.itextpdf.text.pdf.security.ExternalSignature;
 
+import net.egelke.android.eid.UserCancelException;
 import net.egelke.android.eid.reader.EidCardReader;
 
 import java.io.IOException;
@@ -53,8 +54,10 @@ public class EidExternalSignature implements ExternalSignature {
         byte hash[] = messageDigest.digest(bytes);
 
         try {
-            return reader.signSha256Pkcs1(hash);
+            return reader.signPkcs1(hash, EidCardReader.DigestAlg.SHA256, EidCardReader.Key.NON_REPUDIATION);
         } catch (IOException ioe) {
+            throw new GeneralSecurityException(ioe);
+        }catch (UserCancelException ioe) {
             throw new GeneralSecurityException(ioe);
         }
     }
