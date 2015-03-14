@@ -76,10 +76,12 @@ public class EidService extends Service {
     public static final int READ_DATA = 1;
     public static final int VERIFY_CARD = 3;
     public static final int VERIFY_PIN = 5;
+    public static final int AUTH = 10;
     public static final int SIGN_PDF = 11;
 
     //Action Response
     public static final int DATA_RSP = 101;
+    public static final int AUTH_RSP = 110;
 
     private class IncomingHandler extends Handler {
 
@@ -133,6 +135,15 @@ public class EidService extends Service {
                             notifyMgr.notify(1, builder.build());
                             verifyPin(msg);
                             break;
+                        case AUTH:
+                            builder = new NotificationCompat.Builder(EidService.this)
+                                    .setSmallIcon(R.drawable.ic_stat_card)
+                                    .setContentTitle("eID Service: Authenticating")
+                                    .setContentText("Your eID is being used to authenticate")
+                                    .setCategory(Notification.CATEGORY_SERVICE);
+                            notifyMgr.notify(1, builder.build());
+                            authenticate(msg);
+                            break;
                         case SIGN_PDF:
                             //TODO
                             break;
@@ -178,6 +189,10 @@ public class EidService extends Service {
             } catch (CardBlockedException cbe) {
                 Toast.makeText(EidService.this, "eID Card Blocked!", Toast.LENGTH_LONG).show();
             }
+        }
+
+        private void authenticate(Message msg) throws IOException {
+
         }
     }
 

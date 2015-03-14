@@ -355,18 +355,18 @@ public class EidCardReader implements Closeable {
 	}
 
     private ApduSwCode validateResponse(byte[] rsp) throws IOException {
-        if (rsp.length != 2) {
-            Log.e(TAG, "APDU select file command did not return 2 bytes but: " + rsp.length);
+        if (rsp.length < 2) {
+            Log.e(TAG, "APDU command did not return 2 bytes: " + rsp.length);
             throw new IOException("The card returned an invalid response");
-        } else if (rsp[0] == ((byte) 0x90) && rsp[1] == 0x00) {
+        } else if (rsp[rsp.length - 2] == ((byte) 0x90) && rsp[rsp.length - 1] == 0x00) {
             return ApduSwCode.OK;
-        } else if (rsp[0] ==((byte)0x63) && (rsp[1] & 0xF0) == 0xC0) {
+        } else if (rsp[rsp.length - 2] ==((byte)0x63) && (rsp[rsp.length - 1] & 0xF0) == 0xC0) {
             Log.i(TAG, String.format("Verify fail, %X tries left.", rsp[1] & 0x0F));
             return ApduSwCode.VerifyFail;
-        } else if (rsp[0] == ((byte) 0x69) && rsp[1] == ((byte)0x82)) {
+        } else if (rsp[rsp.length - 2] == ((byte) 0x69) && rsp[rsp.length - 1] == ((byte)0x82)) {
             Log.w(TAG, "Security condition not satisfied");
             return ApduSwCode.SecConNotSatisfied;
-        } else if (rsp[0] == ((byte) 0x69) && rsp[1] == ((byte)0x83)) {
+        } else if (rsp[rsp.length - 2] == ((byte) 0x69) && rsp[rsp.length - 1] == ((byte)0x83)) {
             Log.w(TAG, "Authentication method blocked");
             return ApduSwCode.AuthBlocked;
         } else if (rsp[rsp.length - 2] == ((byte) 0x6B) && rsp[rsp.length - 1] == 0x0) {
