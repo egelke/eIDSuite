@@ -386,6 +386,7 @@ public class EidService extends Service {
             builder.setStyle(inboxStyle);
 
             wait = new Object();
+            Toast.makeText(EidService.this, "Connect your reader", Toast.LENGTH_LONG).show();
             notifyMgr.notify(1, builder.build());
             synchronized (wait) {
                 try {
@@ -511,6 +512,7 @@ public class EidService extends Service {
                     .setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_LIGHTS);
 
             wait = new Object();
+            Toast.makeText(EidService.this, "Insert your eID", Toast.LENGTH_LONG).show();
             notifyMgr.notify(1, builder.build());
             synchronized (wait) {
                 try {

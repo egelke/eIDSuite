@@ -5,11 +5,12 @@
         <!-- Customize your theme here. -->
     </style>
 
-    <style name="AppDialogTheme" parent="Theme.AppCompat.Light.Dialog">
-        <item name="android:windowNoTitle">false</item>
-        <item name="android:windowTitleBackgroundStyle">@android:color/transparent</item>
-        <item name="windowActionBar">false</item>
-        <item name="android:windowCloseOnTouchOutside">false</item>
+    <style name="AppThemeAlt" parent="android:Theme.Holo.Light.DarkActionBar">
+
+    </style>
+
+    <style name="AppDialogTheme" parent="android:Theme.Holo.Light.Dialog.MinWidth">
+
     </style>
 
 </resources>

@@ -50,7 +50,9 @@
         </service>
 
         <activity
+            android:theme="@style/AppThemeAlt"
             android:name=".view.AuthActivity"
+            android:icon="@drawable/ic_launcher"
             android:label="@string/title_activity_auth" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

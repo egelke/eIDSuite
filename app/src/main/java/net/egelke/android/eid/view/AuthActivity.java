@@ -24,6 +24,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -84,7 +89,7 @@ import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 
-public class AuthActivity extends ActionBarActivity {
+public class AuthActivity extends Activity {
 
     private static final String TAG = "net.egelke.android.eid";
 
@@ -105,20 +110,12 @@ public class AuthActivity extends ActionBarActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         getWindow().requestFeature(Window.FEATURE_PROGRESS);
+        getWindow().requestFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
         super.onCreate(savedInstanceState);
 
         webview = new WebView(this);
         webview.getSettings().setJavaScriptEnabled(true);
-        webview.setWebChromeClient(new WebChromeClient() {
-            public void onProgressChanged(WebView view, int progress) {
-                AuthActivity.this.setProgress(progress * 1000);
-            }
-
-            @Override
-            public void onReceivedTitle(WebView view, String title) {
-                AuthActivity.this.setTitle(getString(R.string.title_activity_auth) + ": " + title);
-            }
-        });
+        webview.setWebChromeClient(new MyWebChromeClient());
         webview.setWebViewClient(new MyWebViewClient());
 
         setContentView(webview);
@@ -140,9 +137,48 @@ public class AuthActivity extends ActionBarActivity {
         bindService(new Intent(this, EidService.class), mConnection, Context.BIND_AUTO_CREATE);
     }
 
+    private class MyWebChromeClient extends WebChromeClient {
+
+
+
+        public void onProgressChanged(WebView view, int progress) {
+            AuthActivity.this.setProgress(progress * 1000);
+        }
+
+        @Override
+        public void onReceivedTitle(WebView view, String title) {
+            AuthActivity.this.setTitle(getString(R.string.title_activity_auth) + ": " + title);
+        }
+
+        @Override
+        public void onReceivedIcon(WebView view, Bitmap icon) {
+            Bitmap base = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
+            base = base.copy(base.getConfig(), true);
+
+            Canvas canvas = new Canvas(base);
+            Bitmap large= Bitmap.createScaledBitmap(icon, icon.getWidth()*2, icon.getHeight()*2, false);
+            canvas.drawBitmap(large, base.getWidth() - large.getWidth(), base.getHeight() - large.getHeight(), null);
+            AuthActivity.this.getActionBar().setIcon(new BitmapDrawable(getResources(), base));
+        }
+    }
+
     private class MyWebViewClient extends WebViewClient {
 
         String cookies;
+
+        @Override
+        public void onPageStarted(WebView view, String url, Bitmap favicon) {
+            setProgressBarVisibility(true);
+            setProgressBarIndeterminateVisibility(true);
+            getWindow().setFeatureInt(Window.FEATURE_PROGRESS, 0);
+        }
+
+        @Override
+        public void onPageFinished(WebView view, String url) {
+            setProgressBarVisibility(false);
+            setProgressBarIndeterminateVisibility(false);
+            getWindow().setFeatureInt(Window.FEATURE_PROGRESS, 10000);
+        }
 
         @Override
         public WebResourceResponse shouldInterceptRequest(final WebView view, final String url) {
@@ -158,19 +194,22 @@ public class AuthActivity extends ActionBarActivity {
                 return null;
             }
             try {
+                EidSSLSocketFactory factory = new EidSSLSocketFactory(mEidService);
+
                 URL path = new URL(url);
                 HttpsURLConnection con = (HttpsURLConnection) path.openConnection();
                 con.setInstanceFollowRedirects(false);
                 con.setRequestProperty("Cookie", cookies);
                 con.setRequestProperty("Referer", AuthActivity.this.url);
-                con.setSSLSocketFactory(new EidSSLSocketFactory(mEidService));
+                con.setRequestProperty("Connection", "Keep-Alive");
+                con.setSSLSocketFactory(factory);
 
                 Log.d(TAG, String.format("Getting %s [Cookie=%s, Referer=%s]", url, cookies, AuthActivity.this.url));
-                InputStream in = con.getInputStream();
+                con.connect();
                 if (con.getResponseCode() == 200) {
                     Log.d(TAG, String.format("Got 200, returning data (%d)", con.getContentLength()));
                     String[] contentTypeParts = con.getContentType().split(";[ ]*");
-                    return new WebResourceResponse(contentTypeParts[0], contentTypeParts[1], in);
+                    return new WebResourceResponse(contentTypeParts[0], contentTypeParts[1], con.getInputStream());
                 }if (con.getResponseCode() == 302) {
                     Log.d(TAG, "Got 302, Setting cookies and following");
                     //Update the cookies before we do the redirect
@@ -182,11 +221,14 @@ public class AuthActivity extends ActionBarActivity {
                             iamfasPR = setCookieValue.split(";[ ]*")[0];
                         }
                     }
+                    String redirect = con.getHeaderField("Location");
+                    while (con.getInputStream().read() >= 0) { }
+                    con.disconnect();
 
-                    path = new URL(con.getHeaderField("Location"));
+                    path = new URL(redirect);
                     con = (HttpsURLConnection) path.openConnection();
                     con.setInstanceFollowRedirects(false);
-                    con.setSSLSocketFactory(new EidSSLSocketFactory(mEidService));
+                    con.setSSLSocketFactory(factory);
                     String cookie[] = cookies.split(";[ ]*");
                     List<String> newCookies = new LinkedList<String>();
                     for(String newCookie : cookie) {
@@ -200,13 +242,14 @@ public class AuthActivity extends ActionBarActivity {
                     String newCookie = TextUtils.join("; ", newCookies);
                     con.setRequestProperty("Cookie", newCookie);
                     con.setRequestProperty("Referer", AuthActivity.this.url);
+                    con.setRequestProperty("Connection", "Keep-Alive");
 
                     Log.d(TAG, String.format("Getting %s  [Cookie=%s, Referer=%s]", path.toString(), newCookie, AuthActivity.this.url));
-                    in = con.getInputStream();
+                    con.connect();
 
                     String[] contentTypeParts = con.getContentType().split(";[ ]*");
                     Log.d(TAG, String.format("Got %d %s (%d)", con.getResponseCode(), con.getResponseMessage(), con.getContentLength()));
-                    return new WebResourceResponse(contentTypeParts[0], contentTypeParts[1], in);
+                    return new WebResourceResponse(contentTypeParts[0], contentTypeParts[1], con.getInputStream());
                 } else {
                     return null;
                 }
