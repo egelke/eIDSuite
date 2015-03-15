@@ -170,11 +170,11 @@ public class EidService extends Service {
 
                 Message rsp = Message.obtain(null, DATA_RSP, file.getId(), 0);
                 if (data instanceof Parcelable)
-                    rsp.getData().putParcelable(file.name(), (Parcelable)data);
+                    rsp.getData().putParcelable(file.name(), (Parcelable) data);
                 else if (data instanceof byte[])
-                    rsp.getData().putByteArray(file.name(), (byte[])data);
+                    rsp.getData().putByteArray(file.name(), (byte[]) data);
                 else if (data instanceof X509Certificate)
-                    rsp.getData().putByteArray(file.name(), ((X509Certificate)data).getEncoded());
+                    rsp.getData().putByteArray(file.name(), ((X509Certificate) data).getEncoded());
 
                 msg.replyTo.send(rsp);
             }
@@ -183,11 +183,27 @@ public class EidService extends Service {
         private void verifyPin(Message msg) throws IOException {
             try {
                 eidCardReader.verifyPin();
-                Toast.makeText(EidService.this, "PIN Valid", Toast.LENGTH_SHORT).show();
+                uiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(EidService.this, "PIN Valid", Toast.LENGTH_SHORT).show();
+                    }
+                });
+
             } catch (UserCancelException uce) {
-                Toast.makeText(EidService.this, "PIN verification canceled", Toast.LENGTH_LONG).show();
+                uiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(EidService.this, "PIN verification canceled", Toast.LENGTH_LONG).show();
+                    }
+                });
             } catch (CardBlockedException cbe) {
-                Toast.makeText(EidService.this, "eID Card Blocked!", Toast.LENGTH_LONG).show();
+                uiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(EidService.this, "eID Card Blocked!", Toast.LENGTH_LONG).show();
+                    }
+                });
             }
         }
 
@@ -230,6 +246,7 @@ public class EidService extends Service {
             Looper.loop();
         }
     }
+
     private class MessageThread extends Thread {
 
         public MessageThread() {
@@ -244,6 +261,7 @@ public class EidService extends Service {
     }
 
     //permanent properties
+    private Handler uiHandler = null;
     private Handler broadcast = null;
     private Messenger messenger = null;
     private UsbManager usbManager;
@@ -267,6 +285,7 @@ public class EidService extends Service {
         notifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         powerMgr = (PowerManager) getSystemService(Context.POWER_SERVICE);
 
+        uiHandler = new Handler(Looper.getMainLooper());
         (new BroadcastThread()).start();
         messageThread = new MessageThread();
         messageThread.start();
@@ -384,9 +403,14 @@ public class EidService extends Service {
                 inboxStyle.addLine("\t" + device);
             }
             builder.setStyle(inboxStyle);
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(EidService.this, "Please connect your reader", Toast.LENGTH_LONG).show();
+                }
+            });
 
             wait = new Object();
-            Toast.makeText(EidService.this, "Connect your reader", Toast.LENGTH_LONG).show();
             notifyMgr.notify(1, builder.build());
             synchronized (wait) {
                 try {
@@ -429,7 +453,8 @@ public class EidService extends Service {
             }
             wait = null;
             unregisterReceiver(grantReceiver);
-            if (!usbManager.hasPermission(ccidDevice)) throw new IllegalStateException("No USB permission granted");
+            if (!usbManager.hasPermission(ccidDevice))
+                throw new IllegalStateException("No USB permission granted");
         }
     }
 
@@ -510,9 +535,14 @@ public class EidService extends Service {
                     .setCategory(Notification.CATEGORY_SERVICE)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_LIGHTS);
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(EidService.this, "Please insert your eID", Toast.LENGTH_LONG).show();
+                }
+            });
 
             wait = new Object();
-            Toast.makeText(EidService.this, "Insert your eID", Toast.LENGTH_LONG).show();
             notifyMgr.notify(1, builder.build());
             synchronized (wait) {
                 try {
@@ -524,7 +554,8 @@ public class EidService extends Service {
             wait = null;
             eidCardReader.setEidCardCallback(null);
 
-            if (!eidCardReader.isCardPresent()) throw new IllegalStateException("No eID card present");
+            if (!eidCardReader.isCardPresent())
+                throw new IllegalStateException("No eID card present");
         }
     }
 
