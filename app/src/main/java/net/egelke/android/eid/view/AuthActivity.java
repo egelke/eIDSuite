@@ -17,20 +17,36 @@
 */
 package net.egelke.android.eid.view;
 
+import android.annotation.TargetApi;
+import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Messenger;
 import android.os.Parcel;
 import android.os.SystemClock;
 import android.support.v7.app.ActionBarActivity;
+import android.text.TextUtils;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.Window;
+import android.webkit.CookieManager;
+import android.webkit.CookieSyncManager;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.TextView;
 
 import net.egelke.android.eid.EidService;
@@ -53,12 +69,15 @@ import org.apache.http.params.HttpParams;
 import org.spongycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.URL;
 import java.nio.CharBuffer;
 import java.security.KeyStore;
 import java.security.Security;
+import java.util.LinkedList;
+import java.util.List;
 
 import javax.net.SocketFactory;
 import javax.net.ssl.HttpsURLConnection;
@@ -69,11 +88,9 @@ public class AuthActivity extends ActionBarActivity {
 
     private static final String TAG = "net.egelke.android.eid";
 
-    static {
-        //Security.addProvider(new BeIDProvider());
-    }
-
     private Messenger mEidService = null;
+    private WebView webview;
+    private String url;
 
     private ServiceConnection mConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
@@ -87,8 +104,32 @@ public class AuthActivity extends ActionBarActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        getWindow().requestFeature(Window.FEATURE_PROGRESS);
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_auth);
+
+        webview = new WebView(this);
+        webview.getSettings().setJavaScriptEnabled(true);
+        webview.setWebChromeClient(new WebChromeClient() {
+            public void onProgressChanged(WebView view, int progress) {
+                AuthActivity.this.setProgress(progress * 1000);
+            }
+
+            @Override
+            public void onReceivedTitle(WebView view, String title) {
+                AuthActivity.this.setTitle(getString(R.string.title_activity_auth) + ": " + title);
+            }
+        });
+        webview.setWebViewClient(new MyWebViewClient());
+
+        setContentView(webview);
+
+        Intent intent = getIntent();
+        if (intent.getAction() == Intent.ACTION_VIEW) {
+            url = intent.getData().toString();
+            webview.loadUrl(url);
+        } else {
+            webview.loadUrl("http://www.taxonweb.be/");
+        }
     }
 
     @Override
@@ -97,98 +138,82 @@ public class AuthActivity extends ActionBarActivity {
 
         //setup service
         bindService(new Intent(this, EidService.class), mConnection, Context.BIND_AUTO_CREATE);
+    }
 
-        Intent intent = getIntent();
-        if (intent.getAction() == Intent.ACTION_VIEW) {
-            final Uri url = intent.getData();
-            ((TextView) findViewById(R.id.text)).setText(url.toString());
+    private class MyWebViewClient extends WebViewClient {
 
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        int count = 0;
-                        while (count < 10 && (mEidService == null)) {
-                            SystemClock.sleep(++count * 10);
-                        }
-                        if (mEidService == null) throw new IllegalStateException("No eID service initialized in time");
+        String cookies;
 
-/*
-                        KeyStore serverRootCert = KeyStore.getInstance("AndroidCAStore");
-                        serverRootCert.load(null, null);
-                        KeyStore clientCert = KeyStore.getInstance("BeID");
-                        clientCert.load(new BeIDKeyStoreStream(mEidService), null);
-
-                        HttpClient httpClient;
-                        HttpParams httpParams = new BasicHttpParams();
-                        SSLSocketFactory sslSocketFactory = new SSLSocketFactory(clientCert, null, serverRootCert);
-                        SchemeRegistry registry = new SchemeRegistry();
-                        registry.register(new Scheme("https", sslSocketFactory, 443));
-                        httpClient = new DefaultHttpClient(new ThreadSafeClientConnManager(httpParams, registry), httpParams);
-
-                        HttpGet request = new HttpGet(url.toString());
-                        final HttpResponse response = httpClient.execute(request);
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                ((TextView) findViewById(R.id.text)).setText(response.getStatusLine().toString());
-                            }
-                        });
-*/
-
-/*
-                        SSLContext sslContext = SSLContext.getInstance("TLS");
-                        KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance("BeID");
-
-                        keyManagerFactory.init(new BeIDManagerFactoryParameters(mEidService));
-                        sslContext.init(keyManagerFactory.getKeyManagers(), null, null);
-                        javax.net.ssl.SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
-
-                        URL path = new URL(url.toString());
-                        HttpsURLConnection con = (HttpsURLConnection) path.openConnection();
-                        try {
-                            final CharBuffer buffer = CharBuffer.allocate(1000);
-                            con.setSSLSocketFactory(sslSocketFactory);
-                            Reader reader = new InputStreamReader(con.getInputStream());
-                            reader.read(buffer);
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    ((TextView) findViewById(R.id.text)).setText(buffer.toString());
-                                }
-                            });
-                        } finally {
-                            con.disconnect();
-                        }
-*/
-
-                        URL path = new URL(url.toString());
-                        HttpsURLConnection con = (HttpsURLConnection) path.openConnection();
-                        try {
-                            final CharBuffer buffer = CharBuffer.allocate(1000);
-                            con.setSSLSocketFactory(new EidSSLSocketFactory(mEidService));
-                            Reader reader = new InputStreamReader(con.getInputStream());
-                            reader.read(buffer);
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    ((TextView) findViewById(R.id.text)).setText(buffer.toString());
-                                }
-                            });
-                        } finally {
-                            con.disconnect();
-                        }
-                    } catch (final Exception e) {
-                        Log.e(TAG, "Failed to authenticate with server", e);
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                ((TextView) findViewById(R.id.text)).setText(e.toString());
-                            }
-                        });
+        @Override
+        public WebResourceResponse shouldInterceptRequest(final WebView view, final String url) {
+            if (!url.startsWith("https://certif.iamfas.belgium.be/fas/")) {
+                Log.d(TAG, String.format("Getting %s in the default way", url));
+                //get the cookie at the each run, lets hope it is on time.
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        cookies = CookieManager.getInstance().getCookie("https://certif.iamfas.belgium.be/fas/");
                     }
+                }).start();
+                return null;
+            }
+            try {
+                URL path = new URL(url);
+                HttpsURLConnection con = (HttpsURLConnection) path.openConnection();
+                con.setInstanceFollowRedirects(false);
+                con.setRequestProperty("Cookie", cookies);
+                con.setRequestProperty("Referer", AuthActivity.this.url);
+                con.setSSLSocketFactory(new EidSSLSocketFactory(mEidService));
+
+                Log.d(TAG, String.format("Getting %s [Cookie=%s, Referer=%s]", url, cookies, AuthActivity.this.url));
+                InputStream in = con.getInputStream();
+                if (con.getResponseCode() == 200) {
+                    Log.d(TAG, String.format("Got 200, returning data (%d)", con.getContentLength()));
+                    String[] contentTypeParts = con.getContentType().split(";[ ]*");
+                    return new WebResourceResponse(contentTypeParts[0], contentTypeParts[1], in);
+                }if (con.getResponseCode() == 302) {
+                    Log.d(TAG, "Got 302, Setting cookies and following");
+                    //Update the cookies before we do the redirect
+                    String iamfasPR=null;
+                    List<String> setCookieValues = con.getHeaderFields().get("Set-Cookie");
+                    for(String setCookieValue : setCookieValues) {
+                        CookieManager.getInstance().setCookie(url, setCookieValue);
+                        if (setCookieValue.startsWith("iamfasPR=")) {
+                            iamfasPR = setCookieValue.split(";[ ]*")[0];
+                        }
+                    }
+
+                    path = new URL(con.getHeaderField("Location"));
+                    con = (HttpsURLConnection) path.openConnection();
+                    con.setInstanceFollowRedirects(false);
+                    con.setSSLSocketFactory(new EidSSLSocketFactory(mEidService));
+                    String cookie[] = cookies.split(";[ ]*");
+                    List<String> newCookies = new LinkedList<String>();
+                    for(String newCookie : cookie) {
+                        if (newCookie.startsWith("FASNODE")
+                                || newCookie.startsWith("STORKNODE")
+                                || newCookie.startsWith("iamfaslbPR")
+                                || newCookie.startsWith("IAM3-FAS-JSESSIONID-PR"))
+                            newCookies.add(newCookie);
+                    }
+                    newCookies.add(iamfasPR);
+                    String newCookie = TextUtils.join("; ", newCookies);
+                    con.setRequestProperty("Cookie", newCookie);
+                    con.setRequestProperty("Referer", AuthActivity.this.url);
+
+                    Log.d(TAG, String.format("Getting %s  [Cookie=%s, Referer=%s]", path.toString(), newCookie, AuthActivity.this.url));
+                    in = con.getInputStream();
+
+                    String[] contentTypeParts = con.getContentType().split(";[ ]*");
+                    Log.d(TAG, String.format("Got %d %s (%d)", con.getResponseCode(), con.getResponseMessage(), con.getContentLength()));
+                    return new WebResourceResponse(contentTypeParts[0], contentTypeParts[1], in);
+                } else {
+                    return null;
                 }
-            }).start();
+            } catch (Exception e) {
+                Log.e(TAG, "Failed HTTP intercept", e);
+                return null;
+            }
         }
     }
 
@@ -208,11 +233,25 @@ public class AuthActivity extends ActionBarActivity {
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == R.id.action_close) {
+
+            finish();
             return true;
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        // Check if the key event was the Back button and if there's history
+        if ((keyCode == KeyEvent.KEYCODE_BACK) && webview.canGoBack()) {
+            webview.goBack();
+            return true;
+        }
+        // If it wasn't the Back key or there's no web page history, bubble up to the default
+        // system behavior (probably exit the activity)
+        return super.onKeyDown(keyCode, event);
     }
 
     @Override

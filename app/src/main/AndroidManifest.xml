@@ -53,14 +53,17 @@
             android:name=".view.AuthActivity"
             android:label="@string/title_activity_auth" >
             <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
                 <category android:name="android.intent.category.BROWSABLE" />
                 <category android:name="android.intent.category.DEFAULT" />
 
-                <data
-                    android:host="certif.iamfas.belgium.be"
-                    android:scheme="https" />
+                <data android:scheme="https" android:host="eservices.minfin.fgov.be"  android:pathPrefix="/taxonweb/" />
             </intent-filter>
         </activity>
         <activity

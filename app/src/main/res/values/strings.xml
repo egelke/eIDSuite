@@ -11,6 +11,7 @@
     <string name="action_pin">Verify PIN</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_ok">OK</string>
+    <string name="action_close">Close</string>
 
     <string name="fragment_person">Person</string>
     <string name="fragment_address">Address</string>

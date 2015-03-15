@@ -191,8 +191,29 @@ public class EidService extends Service {
             }
         }
 
-        private void authenticate(Message msg) throws IOException {
+        private void authenticate(Message msg) throws IOException, RemoteException {
+            byte[] hash = msg.getData().getByteArray("Hash");
+            EidCardReader.DigestAlg digestAlg = EidCardReader.DigestAlg.valueOf(msg.getData().getString("DigestAlg", "SHA1"));
 
+            Message rsp;
+            try {
+                rsp = Message.obtain(null, AUTH_RSP, 0, 0);
+                byte[] signature = eidCardReader.signPkcs1(hash, digestAlg, EidCardReader.Key.AUTHENTICATION);
+                rsp.getData().putByteArray("Signature", signature);
+            } catch (UserCancelException e) {
+                Log.i(TAG, "User canceled authentication", e);
+                rsp = Message.obtain(null, AUTH_RSP, 1, 0);
+            } catch (CardBlockedException cbe) {
+                Log.w(TAG, "Authentication failed because of blocked card", cbe);
+                rsp = Message.obtain(null, AUTH_RSP, 1, 1);
+            } catch (IOException ioe) {
+                Log.e(TAG, "Authentication failed because of generic error", ioe);
+                rsp = Message.obtain(null, AUTH_RSP, 1, 2);
+            } catch (RuntimeException ioe) {
+                Log.e(TAG, "Authentication failed because of generic error", ioe);
+                rsp = Message.obtain(null, AUTH_RSP, 1, 2);
+            }
+            msg.replyTo.send(rsp);
         }
     }
 

@@ -262,7 +262,7 @@ public class CCID implements Closeable {
             throw new IOException("Illegal CCID reader response (wrong sequence)");
         }
         if ((rsp[7] & (byte)0x03) == 0x01 && rsp[8] == 0x00) {
-            throw new UnsupportedOperationException("command not supported by the reader");
+            throw new UnsupportedOperationException("Command not supported by the reader");
         }
         if ((rsp[7] & (byte)0x03) != 0x00) {
             throw new IOException(String.format("Command Error returned by the CCID reader: %x", rsp[8]));

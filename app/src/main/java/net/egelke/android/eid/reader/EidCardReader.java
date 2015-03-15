@@ -29,6 +29,14 @@ import net.egelke.android.eid.model.Identity;
 import net.egelke.android.eid.usb.CCID;
 import net.egelke.android.eid.usb.CardCallback;
 
+import org.spongycastle.asn1.ASN1Encoding;
+import org.spongycastle.asn1.DERNull;
+import org.spongycastle.asn1.nist.NISTObjectIdentifiers;
+import org.spongycastle.asn1.oiw.OIWObjectIdentifiers;
+import org.spongycastle.asn1.x509.AlgorithmIdentifier;
+import org.spongycastle.asn1.x509.DigestInfo;
+import org.spongycastle.asn1.x509.X509ObjectIdentifiers;
+
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
@@ -48,6 +56,7 @@ public class EidCardReader implements Closeable {
     }
 
     public static enum DigestAlg {
+        RAW,
         SHA1,
         SHA256
     }
@@ -55,6 +64,7 @@ public class EidCardReader implements Closeable {
     //https://www.eftlab.com.au/index.php/site-map/knowledge-base/118-apdu-response-list
     private static enum ApduSwCode {
         OK,
+        OkGetRsp,
         VerifyFail,
         SecConNotSatisfied,
         AuthBlocked,
@@ -63,12 +73,20 @@ public class EidCardReader implements Closeable {
     }
 
     private static final Map<FileId, byte[]> FILES;
-	private static final byte[] READ_BINARY = {0x00, (byte) 0xB0, 0x00, 0x00, (byte)0x00/*len*/};
-    private static final byte[] INIT_SIGN_AUTH_RAWPKCS1 = {0x00, 0x22, 0x41, (byte)0xB6, 0x04/*len*/, (byte)0x80, 0x10 /*RSA-SSA with prepared EMSA*/, (byte) 0x84, (byte) 0x82 /*AUTHENTICATION KEY*/};
-    private static final byte[] INIT_SIGN_NONREP_RAWPKCS1 = {0x00, 0x22, 0x41, (byte)0xB6, 0x04/*len*/, (byte)0x80, 0x10 /*RSA-SSA with prepared EMSA*/, (byte) 0x84, (byte) 0x83 /*NON REPUDIATION KEY*/};
-    private static final byte[] DO_SIGN_EMSA_SHA1 = {0x00, 0x2A, (byte) 0x9E, (byte) 0x9A, 0x11/*len*/, 0x30, 0x1f, 0x30, 0x07, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x04, 0x14, 0x02, 0x01, 0x04, 0x20};
-    private static final byte[] DO_SIGN_EMSA_SHA256 = {0x00, 0x2A, (byte) 0x9E, (byte) 0x9A, 0x11/*len*/, 0x30, 0x2f, 0x30, 0x0b, 0x06, 0x09, 0x60, (byte) 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x04, 0x20};
-    private static final byte[] VERIFY_PIN = {0x00, 0x20, 0x00, 0x01, 0x08 /*len*/, 0x20, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
+	private static final byte[] READ_BINARY = {0x00, (byte) 0xB0, 0x00, 0x00, (byte)0x00};
+    private static final byte[] GET_RESPONSE = {0x00, (byte) 0xC0, 0x00, 0x00, (byte)0x00};
+    private static final byte[] INIT_SIGN_AUTH_RAWPKCS1 = {0x00, 0x22, 0x41, (byte)0xB6, 0x05, //ISO/IEC 7816 header, data below
+            0x04, (byte)0x80, 0x01 /*RSA-SSA with prepared EMSA*/, (byte) 0x84, (byte) 0x82 /*AUTHENTICATION KEY*/};
+    private static final byte[] INIT_SIGN_NONREP_RAWPKCS1 = {0x00, 0x22, 0x41, (byte)0xB6, 0x05, //ISO/IEC 7816 header, data below
+            0x04, (byte)0x80, 0x01 /*RSA-SSA with prepared EMSA*/, (byte) 0x84, (byte) 0x83 /*NON REPUDIATION KEY*/};
+    private static final byte[] DO_SIGN = {0x00, 0x2A, (byte) 0x9E, (byte) 0x9A, 0x00};
+    //private static final byte[] DO_SIGN_EMSA_SHA1 = {0x00, 0x2A, (byte) 0x9E, (byte) 0x9A, 0x00, //ISO/IEC 7816 header, data below
+    //        0x30, 0x00, 0x30, 0x07, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x04, 0x00};
+    //private static final byte[] DO_SIGN_EMSA_SHA256 = {0x00, 0x2A, (byte) 0x9E, (byte) 0x9A, 0x00, //ISO/IEC 7816 header, data below
+    //        0x30, 0x00, 0x30, 0x0b, 0x06, 0x09, 0x60, (byte) 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x04, 0x00};
+    private static final byte[] VERIFY_PIN = {0x00, 0x20, 0x00, 0x01, 0x08, //ISO/IEC 7816 header, data below
+            0x20, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
+
     private static final byte[] ATR_PATTERN = { (byte) 0x3b, (byte) 0x98, 0x00, (byte) 0x40, 0x00, (byte) 0x00, 0x00, 0x00, (byte) 0x01, (byte) 0x01, (byte) 0xad, (byte) 0x13, (byte) 0x10 };
     private static final byte[] ATR_MASK    = { (byte) 0xff, (byte) 0xff, 0x00, (byte) 0xff, 0x00, (byte) 0x00, 0x00, 0x00, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xf0 };
 
@@ -248,37 +266,57 @@ public class EidCardReader implements Closeable {
         if (key == Key.NON_REPUDIATION) verifyPin();
 
         //Calculate the signature
-        byte [] cmd;
+        byte [] digestInfo;
         switch (alg) {
+            case RAW:
+                digestInfo = hash;
+                break;
             case SHA1:
-                cmd = new byte[DO_SIGN_EMSA_SHA1.length + hash.length];
+                digestInfo = new DigestInfo(new AlgorithmIdentifier(X509ObjectIdentifiers.id_SHA1,
+                        DERNull.INSTANCE), hash).getEncoded(ASN1Encoding.DER);
                 break;
             case SHA256:
-                cmd = new byte[DO_SIGN_EMSA_SHA256.length + hash.length];
+                digestInfo = new DigestInfo(new AlgorithmIdentifier(NISTObjectIdentifiers.id_sha256,
+                        DERNull.INSTANCE), hash).getEncoded(ASN1Encoding.DER);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown digest algorithm");
         }
-        System.arraycopy(DO_SIGN_EMSA_SHA256, 0, cmd, 0, DO_SIGN_EMSA_SHA256.length);
-        System.arraycopy(hash, 0, cmd, DO_SIGN_EMSA_SHA256.length, hash.length);
+        byte [] cmd = new byte[DO_SIGN.length + digestInfo.length];
+        System.arraycopy(DO_SIGN, 0, cmd, 0, DO_SIGN.length);
+        cmd[4] = (byte) digestInfo.length;
+        System.arraycopy(hash, 0, cmd, DO_SIGN.length, digestInfo.length);
+
+        byte[] data;
         rsp = cardReader.transmitApdu(cmd);
         switch (validateResponse(rsp)) {
             case OK:
+                data = new byte[rsp.length-2];
+                System.arraycopy(rsp, 0, data, 0, data.length);
+                break;
+            case OkGetRsp:
+                data = getResponse(rsp[1]);
                 break;
             case SecConNotSatisfied:
                 verifyPin();
                 rsp = cardReader.transmitApdu(cmd);
-                if (validateResponse(rsp) != ApduSwCode.OK) {
-                    throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
+                switch (validateResponse(rsp)) {
+                    case OK:
+                        data = new byte[rsp.length-2];
+                        System.arraycopy(rsp, 0, data, 0, data.length);
+                        break;
+                    case OkGetRsp:
+                        data = getResponse(rsp[1]);
+                        break;
+                    default:
+                        throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
                 }
                 break;
             default:
                 throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
         }
 
-        byte[] rspData = new byte[rsp.length-2];
-        System.arraycopy(rsp, 0, rspData, 0, rspData.length);
-        return rspData;
+        return data;
     }
 
     public void verifyPin() throws IOException, UserCancelException {
@@ -354,12 +392,31 @@ public class EidCardReader implements Closeable {
 		return idFileOut.toByteArray();
 	}
 
+    private byte[] getResponse(int len) throws IOException {
+        byte[] cmd = Arrays.copyOf(GET_RESPONSE, GET_RESPONSE.length);
+        cmd[4] = (byte) len;
+
+        byte[] rsp = cardReader.transmitApdu(cmd);
+        switch (validateResponse(rsp)) {
+            case OK:
+                byte[] data = new byte[rsp.length -2];
+                System.arraycopy(rsp, 0, data, 0, data.length);
+                return data;
+            default:
+                //TODO: BadLengthLeCorrectIsXX
+                throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
+        }
+    }
+
     private ApduSwCode validateResponse(byte[] rsp) throws IOException {
         if (rsp.length < 2) {
             Log.e(TAG, "APDU command did not return 2 bytes: " + rsp.length);
             throw new IOException("The card returned an invalid response");
         } else if (rsp[rsp.length - 2] == ((byte) 0x90) && rsp[rsp.length - 1] == 0x00) {
             return ApduSwCode.OK;
+        } else if (rsp[rsp.length - 2] == (byte) 0x61) {
+            Log.d(TAG, String.format("APDU OK, still %X bytes available", rsp[rsp.length-1]));
+            return ApduSwCode.OkGetRsp;
         } else if (rsp[rsp.length - 2] ==((byte)0x63) && (rsp[rsp.length - 1] & 0xF0) == 0xC0) {
             Log.i(TAG, String.format("Verify fail, %X tries left.", rsp[1] & 0x0F));
             return ApduSwCode.VerifyFail;
@@ -376,8 +433,8 @@ public class EidCardReader implements Closeable {
             Log.d(TAG, String.format("APDU Bad length value in Le; 'xx' is the correct exact Le", rsp[rsp.length-1]));
             return ApduSwCode.BadLengthLeCorrectIsXX;
         } else {
-            Log.w(TAG, String.format("APDU select file command failed: %X %X", rsp[0], rsp[1]));
-            throw new IOException("The card returned an error: " + rsp[0]);
+            Log.w(TAG, String.format("APDU command failed: %X %X", rsp[rsp.length - 2], rsp[rsp.length - 1]));
+            throw new IOException("The card returned an error: " + rsp[rsp.length - 2]);
         }
     }
 
