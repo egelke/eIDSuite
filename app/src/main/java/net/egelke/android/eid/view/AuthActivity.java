@@ -92,6 +92,7 @@ import javax.net.ssl.SSLContext;
 public class AuthActivity extends Activity {
 
     private static final String TAG = "net.egelke.android.eid";
+    private static final String HOME= "http://www.taxonweb.be/";
 
     private Messenger mEidService = null;
     private WebView webview;
@@ -117,15 +118,16 @@ public class AuthActivity extends Activity {
         webview.getSettings().setJavaScriptEnabled(true);
         webview.setWebChromeClient(new MyWebChromeClient());
         webview.setWebViewClient(new MyWebViewClient());
-
         setContentView(webview);
+
+        getActionBar().setDisplayHomeAsUpEnabled(true);
 
         Intent intent = getIntent();
         if (intent.getAction() == Intent.ACTION_VIEW) {
             url = intent.getData().toString();
             webview.loadUrl(url);
         } else {
-            webview.loadUrl("http://www.taxonweb.be/");
+            webview.loadUrl(HOME);
         }
     }
 
@@ -270,19 +272,19 @@ public class AuthActivity extends Activity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_close) {
-
-            finish();
-            return true;
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                webview.loadUrl(HOME);
+                return true;
+            case R.id.action_refresh:
+                webview.reload();
+                return true;
+            case R.id.action_close:
+                finish();
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
         }
-
-        return super.onOptionsItemSelected(item);
     }
 
     @Override
