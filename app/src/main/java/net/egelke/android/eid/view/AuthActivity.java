@@ -116,6 +116,9 @@ public class AuthActivity extends Activity {
 
         webview = new WebView(this);
         webview.getSettings().setJavaScriptEnabled(true);
+        webview.getSettings().setAppCachePath(getCacheDir().getAbsolutePath());
+        webview.getSettings().setAppCacheEnabled(true);
+        webview.getSettings().setBuiltInZoomControls(true);
         webview.setWebChromeClient(new MyWebChromeClient());
         webview.setWebViewClient(new MyWebViewClient());
         webview.setDownloadListener(new MyDownloadListener());
