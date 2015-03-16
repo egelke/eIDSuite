@@ -18,10 +18,12 @@
 package net.egelke.android.eid.view;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
@@ -31,6 +33,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
+import android.net.http.SslError;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.IBinder;
@@ -43,6 +46,7 @@ import android.view.MenuItem;
 import android.view.Window;
 import android.webkit.CookieManager;
 import android.webkit.DownloadListener;
+import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
@@ -258,6 +262,27 @@ public class AuthActivity extends Activity {
                 return null;
             }
         }
+
+        @Override
+        public void onReceivedSslError(WebView view, final SslErrorHandler handler, SslError error) {
+            Log.w(TAG, String.format("Receive SSL Error: %s", error));
+            AlertDialog.Builder builder = new AlertDialog.Builder(AuthActivity.this);
+            builder.setMessage("There are problems with the security certificate for this site")
+                    .setIcon(R.drawable.ic_action_warning)
+                    .setTitle("Security Warning");
+            builder.setNegativeButton(R.string.cancelSsl, new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int id) {
+                    handler.cancel();
+                }
+            });
+            builder.setPositiveButton(R.string.contSsl, new DialogInterface.OnClickListener() {
+                public void onClick(DialogInterface dialog, int id) {
+                    handler.proceed();
+                }
+            });
+            AlertDialog dialog = builder.create();
+            dialog.show();
+        }
     }
 
     private class MyDownloadListener implements DownloadListener {
@@ -334,5 +359,11 @@ public class AuthActivity extends Activity {
         if (mEidService != null) {
             unbindService(mConnection);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        unregisterReceiver(receiver);
+        super.onDestroy();
     }
 }
