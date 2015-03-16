@@ -17,26 +17,24 @@
 */
 package net.egelke.android.eid.view;
 
-import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.IBinder;
 import android.os.Messenger;
-import android.os.Parcel;
-import android.os.SystemClock;
-import android.support.v7.app.ActionBarActivity;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -44,55 +42,30 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
 import android.webkit.CookieManager;
-import android.webkit.CookieSyncManager;
-import android.webkit.ValueCallback;
+import android.webkit.DownloadListener;
 import android.webkit.WebChromeClient;
-import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
-import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.TextView;
+import android.widget.Toast;
 
 import net.egelke.android.eid.EidService;
 import net.egelke.android.eid.R;
-import net.egelke.android.eid.jca.BeIDKeyStoreStream;
-import net.egelke.android.eid.jca.BeIDManagerFactoryParameters;
-import net.egelke.android.eid.jca.BeIDProvider;
 import net.egelke.android.eid.tls.EidSSLSocketFactory;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.scheme.SchemeRegistry;
-import org.apache.http.conn.ssl.SSLSocketFactory;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpParams;
-import org.spongycastle.jce.provider.BouncyCastleProvider;
-
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.net.URL;
-import java.nio.CharBuffer;
-import java.security.KeyStore;
-import java.security.Security;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import javax.net.SocketFactory;
 import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
 
 public class AuthActivity extends Activity {
 
     private static final String TAG = "net.egelke.android.eid";
     private static final String HOME= "http://www.taxonweb.be/";
+    private static final Pattern CD_FILE_PATTERN = Pattern.compile(".*filename=\"?([^\";]*)\"?.*");
 
     private Messenger mEidService = null;
     private WebView webview;
@@ -108,6 +81,29 @@ public class AuthActivity extends Activity {
         }
     };
 
+    private BroadcastReceiver receiver = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(action)) {
+                DownloadManager.Query query = new DownloadManager.Query();
+                query.setFilterById(intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1));
+
+                DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                Cursor c = dm.query(query);
+                if (c.moveToFirst()) {
+                    int sIndex = c.getColumnIndex(DownloadManager.COLUMN_STATUS);
+                    if (DownloadManager.STATUS_SUCCESSFUL == c.getInt(sIndex)) {
+                        Toast.makeText(AuthActivity.this, "Download complete", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(AuthActivity.this, "Download failed", Toast.LENGTH_LONG).show();
+                    }
+                }
+            }
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         getWindow().requestFeature(Window.FEATURE_PROGRESS);
@@ -118,9 +114,11 @@ public class AuthActivity extends Activity {
         webview.getSettings().setJavaScriptEnabled(true);
         webview.setWebChromeClient(new MyWebChromeClient());
         webview.setWebViewClient(new MyWebViewClient());
+        webview.setDownloadListener(new MyDownloadListener());
         setContentView(webview);
 
         getActionBar().setDisplayHomeAsUpEnabled(true);
+        registerReceiver(receiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
 
         Intent intent = getIntent();
         if (intent.getAction() == Intent.ACTION_VIEW) {
@@ -262,6 +260,30 @@ public class AuthActivity extends Activity {
         }
     }
 
+    private class MyDownloadListener implements DownloadListener {
+
+
+
+        @Override
+        public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
+            Log.d(TAG, String.format("Download: %s [mimeType=%s, contentDisposition=%s]", url, mimetype, contentDisposition));
+
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse((url)));
+            request.setMimeType(mimetype);
+
+            request.addRequestHeader("User-Agent", userAgent);
+            request.addRequestHeader("Cookie", CookieManager.getInstance().getCookie(url));
+
+            if (contentDisposition != null) {
+                Matcher m = CD_FILE_PATTERN.matcher(contentDisposition);
+                if (m.matches())
+                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, m.group(1));
+            }
+
+            DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+            dm.enqueue(request);
+        }
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -278,6 +300,11 @@ public class AuthActivity extends Activity {
                 return true;
             case R.id.action_refresh:
                 webview.reload();
+                return true;
+            case R.id.action_downloads:
+                Intent i = new Intent();
+                i.setAction(DownloadManager.ACTION_VIEW_DOWNLOADS);
+                startActivity(i);
                 return true;
             case R.id.action_close:
                 finish();

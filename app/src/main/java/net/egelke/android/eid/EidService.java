@@ -107,41 +107,15 @@ public class EidService extends Service {
                 obtainUsbPermission();
                 obtainEidReader();
                 try {
-                    builder = new NotificationCompat.Builder(EidService.this)
-                            .setSmallIcon(R.drawable.ic_stat_card)
-                            .setContentTitle("eID Service: Card initialization")
-                            .setContentText("Your eID card is being initialized")
-                            .setCategory(Notification.CATEGORY_SERVICE);
-                    notifyMgr.notify(1, builder.build());
                     obtainEidCard();
                     switch (msg.what) {
                         case READ_DATA:
-                            builder = new NotificationCompat.Builder(EidService.this)
-                                    .setSmallIcon(R.drawable.ic_stat_card)
-                                    .setContentTitle("eID Service: Card read")
-                                    .setContentText("The data (e.g. identity, address, photo) of your eID card is being read")
-                                    .setCategory(Notification.CATEGORY_SERVICE);
-                            notifyMgr.notify(1, builder.build());
-                            for (FileId fileId : FileId.values()) {
-                                replyIfNeeded(msg, fileId);
-                            }
+                            readData(msg);
                             break;
                         case VERIFY_PIN:
-                            builder = new NotificationCompat.Builder(EidService.this)
-                                    .setSmallIcon(R.drawable.ic_stat_card)
-                                    .setContentTitle("eID Service: Verify PIN")
-                                    .setContentText("The PIN of your eID is being verified")
-                                    .setCategory(Notification.CATEGORY_SERVICE);
-                            notifyMgr.notify(1, builder.build());
                             verifyPin(msg);
                             break;
                         case AUTH:
-                            builder = new NotificationCompat.Builder(EidService.this)
-                                    .setSmallIcon(R.drawable.ic_stat_card)
-                                    .setContentTitle("eID Service: Authenticating")
-                                    .setContentText("Your eID is being used to authenticate")
-                                    .setCategory(Notification.CATEGORY_SERVICE);
-                            notifyMgr.notify(1, builder.build());
                             authenticate(msg);
                             break;
                         case SIGN_PDF:
@@ -161,75 +135,6 @@ public class EidService extends Service {
                 wl.release();
                 stopForeground(true);
             }
-        }
-
-        private void replyIfNeeded(Message msg, FileId file) throws RemoteException, IOException, CertificateException {
-            if (msg.getData().size() == 0 || msg.getData().getBoolean(file.name(), false)) {
-                byte[] bytes = eidCardReader.readFileRaw(file);
-                Object data = file.parse(bytes);
-
-                Message rsp = Message.obtain(null, DATA_RSP, file.getId(), 0);
-                if (data instanceof Parcelable)
-                    rsp.getData().putParcelable(file.name(), (Parcelable) data);
-                else if (data instanceof byte[])
-                    rsp.getData().putByteArray(file.name(), (byte[]) data);
-                else if (data instanceof X509Certificate)
-                    rsp.getData().putByteArray(file.name(), ((X509Certificate) data).getEncoded());
-
-                msg.replyTo.send(rsp);
-            }
-        }
-
-        private void verifyPin(Message msg) throws IOException {
-            try {
-                eidCardReader.verifyPin();
-                uiHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(EidService.this, "PIN Valid", Toast.LENGTH_SHORT).show();
-                    }
-                });
-
-            } catch (UserCancelException uce) {
-                uiHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(EidService.this, "PIN verification canceled", Toast.LENGTH_LONG).show();
-                    }
-                });
-            } catch (CardBlockedException cbe) {
-                uiHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(EidService.this, "eID Card Blocked!", Toast.LENGTH_LONG).show();
-                    }
-                });
-            }
-        }
-
-        private void authenticate(Message msg) throws IOException, RemoteException {
-            byte[] hash = msg.getData().getByteArray("Hash");
-            EidCardReader.DigestAlg digestAlg = EidCardReader.DigestAlg.valueOf(msg.getData().getString("DigestAlg", "SHA1"));
-
-            Message rsp;
-            try {
-                rsp = Message.obtain(null, AUTH_RSP, 0, 0);
-                byte[] signature = eidCardReader.signPkcs1(hash, digestAlg, EidCardReader.Key.AUTHENTICATION);
-                rsp.getData().putByteArray("Signature", signature);
-            } catch (UserCancelException e) {
-                Log.i(TAG, "User canceled authentication", e);
-                rsp = Message.obtain(null, AUTH_RSP, 1, 0);
-            } catch (CardBlockedException cbe) {
-                Log.w(TAG, "Authentication failed because of blocked card", cbe);
-                rsp = Message.obtain(null, AUTH_RSP, 1, 1);
-            } catch (IOException ioe) {
-                Log.e(TAG, "Authentication failed because of generic error", ioe);
-                rsp = Message.obtain(null, AUTH_RSP, 1, 2);
-            } catch (RuntimeException ioe) {
-                Log.e(TAG, "Authentication failed because of generic error", ioe);
-                rsp = Message.obtain(null, AUTH_RSP, 1, 2);
-            }
-            msg.replyTo.send(rsp);
         }
     }
 
@@ -507,6 +412,12 @@ public class EidService extends Service {
     }
 
     public void obtainEidCard() {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
+                .setSmallIcon(R.drawable.ic_stat_card)
+                .setContentTitle("eID Service: Card initialization")
+                .setContentText("Your eID card is being initialized")
+                .setCategory(Notification.CATEGORY_SERVICE);
+        notifyMgr.notify(1, builder.build());
         if (!eidCardReader.isCardPresent()) {
             eidCardReader.setEidCardCallback(new EidCardCallback() {
                 @Override
@@ -526,7 +437,7 @@ public class EidService extends Service {
                 }
             });
 
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
+            builder = new NotificationCompat.Builder(this)
                     .setSmallIcon(R.drawable.ic_stat_card)
                     .setContentTitle("eID Service: Insert your eID")
                     .setContentText(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
@@ -556,6 +467,97 @@ public class EidService extends Service {
 
             if (!eidCardReader.isCardPresent())
                 throw new IllegalStateException("No eID card present");
+        }
+    }
+
+    private void readData(Message msg) throws RemoteException, IOException, CertificateException {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
+                .setSmallIcon(R.drawable.ic_stat_card)
+                .setContentTitle("eID Service: Card read")
+                .setContentText("The data (e.g. identity, address, photo) of your eID card is being read")
+                .setCategory(Notification.CATEGORY_SERVICE);
+        notifyMgr.notify(1, builder.build());
+        for (FileId fileId : FileId.values()) {
+            if (msg.getData().size() == 0 || msg.getData().getBoolean(fileId.name(), false)) {
+                byte[] bytes = eidCardReader.readFileRaw(fileId);
+                Object data = fileId.parse(bytes);
+
+                Message rsp = Message.obtain(null, DATA_RSP, fileId.getId(), 0);
+                if (data instanceof Parcelable)
+                    rsp.getData().putParcelable(fileId.name(), (Parcelable) data);
+                else if (data instanceof byte[])
+                    rsp.getData().putByteArray(fileId.name(), (byte[]) data);
+                else if (data instanceof X509Certificate)
+                    rsp.getData().putByteArray(fileId.name(), ((X509Certificate) data).getEncoded());
+
+                msg.replyTo.send(rsp);
+            }
+        }
+    }
+
+    public void authenticate(Message msg) throws IOException, RemoteException {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
+                .setSmallIcon(R.drawable.ic_stat_card)
+                .setContentTitle("eID Service: Authenticating")
+                .setContentText("Your eID is being used to authenticate")
+                .setCategory(Notification.CATEGORY_SERVICE);
+        notifyMgr.notify(1, builder.build());
+
+        byte[] hash = msg.getData().getByteArray("Hash");
+        EidCardReader.DigestAlg digestAlg = EidCardReader.DigestAlg.valueOf(msg.getData().getString("DigestAlg", "SHA1"));
+
+        Message rsp;
+        try {
+            rsp = Message.obtain(null, AUTH_RSP, 0, 0);
+            byte[] signature = eidCardReader.signPkcs1(hash, digestAlg, EidCardReader.Key.AUTHENTICATION);
+            rsp.getData().putByteArray("Signature", signature);
+        } catch (UserCancelException e) {
+            Log.i(TAG, "User canceled authentication", e);
+            rsp = Message.obtain(null, AUTH_RSP, 1, 0);
+        } catch (CardBlockedException cbe) {
+            Log.w(TAG, "Authentication failed because of blocked card", cbe);
+            rsp = Message.obtain(null, AUTH_RSP, 1, 1);
+        } catch (IOException ioe) {
+            Log.e(TAG, "Authentication failed because of generic error", ioe);
+            rsp = Message.obtain(null, AUTH_RSP, 1, 2);
+        } catch (RuntimeException ioe) {
+            Log.e(TAG, "Authentication failed because of generic error", ioe);
+            rsp = Message.obtain(null, AUTH_RSP, 1, 2);
+        }
+        msg.replyTo.send(rsp);
+    }
+
+    public void verifyPin(Message msg) throws IOException {
+        NotificationCompat.Builder builder = builder = new NotificationCompat.Builder(EidService.this)
+                .setSmallIcon(R.drawable.ic_stat_card)
+                .setContentTitle("eID Service: Verify PIN")
+                .setContentText("The PIN of your eID is being verified")
+                .setCategory(Notification.CATEGORY_SERVICE);
+        notifyMgr.notify(1, builder.build());
+
+        try {
+            eidCardReader.verifyPin();
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(EidService.this, "PIN Valid", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+        } catch (UserCancelException uce) {
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(EidService.this, "PIN verification canceled", Toast.LENGTH_LONG).show();
+                }
+            });
+        } catch (CardBlockedException cbe) {
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(EidService.this, "eID Card Blocked!", Toast.LENGTH_LONG).show();
+                }
+            });
         }
     }
 
