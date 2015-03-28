@@ -366,6 +366,7 @@ public class AuthActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        CookieManager.getInstance().removeAllCookie();
         unregisterReceiver(receiver);
         super.onDestroy();
     }

@@ -285,7 +285,7 @@ public class EidCardReader implements Closeable {
         byte [] cmd = new byte[DO_SIGN.length + digestInfo.length];
         System.arraycopy(DO_SIGN, 0, cmd, 0, DO_SIGN.length);
         cmd[4] = (byte) digestInfo.length;
-        System.arraycopy(hash, 0, cmd, DO_SIGN.length, digestInfo.length);
+        System.arraycopy(digestInfo, 0, cmd, DO_SIGN.length, digestInfo.length);
 
         byte[] data;
         rsp = cardReader.transmitApdu(cmd);

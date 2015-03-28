@@ -29,6 +29,7 @@ import android.content.IntentFilter;
 import android.hardware.usb.UsbConstants;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -43,6 +44,21 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.pdf.PdfReader;
+import com.itextpdf.text.pdf.PdfSignatureAppearance;
+import com.itextpdf.text.pdf.PdfStamper;
+import com.itextpdf.text.pdf.security.BouncyCastleDigest;
+import com.itextpdf.text.pdf.security.CrlClient;
+import com.itextpdf.text.pdf.security.CrlClientOnline;
+import com.itextpdf.text.pdf.security.ExternalDigest;
+import com.itextpdf.text.pdf.security.ExternalSignature;
+import com.itextpdf.text.pdf.security.MakeSignature;
+import com.itextpdf.text.pdf.security.OcspClient;
+import com.itextpdf.text.pdf.security.OcspClientBouncyCastle;
+import com.itextpdf.text.pdf.security.TSAClient;
+import com.itextpdf.text.pdf.security.TSAClientBouncyCastle;
+
 import net.egelke.android.eid.belpic.FileId;
 import net.egelke.android.eid.reader.EidCardCallback;
 import net.egelke.android.eid.reader.EidCardReader;
@@ -50,7 +66,18 @@ import net.egelke.android.eid.reader.PinCallback;
 import net.egelke.android.eid.usb.CCID;
 import net.egelke.android.eid.view.PinActivity;
 
+import org.spongycastle.jce.provider.BouncyCastleProvider;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.security.Security;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Iterator;
@@ -69,6 +96,11 @@ public class EidService extends Service {
     private static final long CONFIRM_TIMEOUT = 1 * 60 * 1000; //1MIN
     private static final long PIN_TIMEOUT = 1 * 60 * 1000; //1MIN
 
+    static {
+        if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null)
+            Security.addProvider(new BouncyCastleProvider());
+    }
+
     //Internal
     private static final int QUIT = 0;
 
@@ -77,11 +109,12 @@ public class EidService extends Service {
     public static final int VERIFY_CARD = 3;
     public static final int VERIFY_PIN = 5;
     public static final int AUTH = 10;
-    public static final int SIGN_PDF = 11;
+    public static final int SIGN = 11;
 
     //Action Response
     public static final int DATA_RSP = 101;
     public static final int AUTH_RSP = 110;
+    public static final int SIGN_RSP = 111;
 
     private class IncomingHandler extends Handler {
 
@@ -118,8 +151,8 @@ public class EidService extends Service {
                         case AUTH:
                             authenticate(msg);
                             break;
-                        case SIGN_PDF:
-                            //TODO
+                        case SIGN:
+                            sign(msg);
                             break;
                         default:
                             super.handleMessage(msg);
@@ -129,8 +162,20 @@ public class EidService extends Service {
                 }
             } catch (IllegalStateException e) {
                 Log.w(TAG, "Failed to process message due to illegal state", e);
+                uiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(EidService.this, "eID action failed", Toast.LENGTH_LONG).show();
+                    }
+                });
             } catch (Exception e) {
                 Log.e(TAG, "Failed to process message", e);
+                uiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(EidService.this, "eID action failed", Toast.LENGTH_LONG).show();
+                    }
+                });
             } finally {
                 wl.release();
                 stopForeground(true);
@@ -495,6 +540,40 @@ public class EidService extends Service {
         }
     }
 
+    public void verifyPin(Message msg) throws IOException {
+        NotificationCompat.Builder builder = builder = new NotificationCompat.Builder(EidService.this)
+                .setSmallIcon(R.drawable.ic_stat_card)
+                .setContentTitle("eID Service: Verify PIN")
+                .setContentText("The PIN of your eID is being verified")
+                .setCategory(Notification.CATEGORY_SERVICE);
+        notifyMgr.notify(1, builder.build());
+
+        try {
+            eidCardReader.verifyPin();
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(EidService.this, "PIN Valid", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+        } catch (UserCancelException uce) {
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(EidService.this, "PIN verification canceled", Toast.LENGTH_LONG).show();
+                }
+            });
+        } catch (CardBlockedException cbe) {
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(EidService.this, "eID Card Blocked!", Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+    }
+
     public void authenticate(Message msg) throws IOException, RemoteException {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                 .setSmallIcon(R.drawable.ic_stat_card)
@@ -527,37 +606,75 @@ public class EidService extends Service {
         msg.replyTo.send(rsp);
     }
 
-    public void verifyPin(Message msg) throws IOException {
-        NotificationCompat.Builder builder = builder = new NotificationCompat.Builder(EidService.this)
+    public void sign(Message msg) throws IOException, DocumentException, GeneralSecurityException, RemoteException {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                 .setSmallIcon(R.drawable.ic_stat_card)
-                .setContentTitle("eID Service: Verify PIN")
-                .setContentText("The PIN of your eID is being verified")
+                .setContentTitle("eID Service: Signing")
+                .setContentText("Your eID is being used to sign")
                 .setCategory(Notification.CATEGORY_SERVICE);
         notifyMgr.notify(1, builder.build());
 
-        try {
-            eidCardReader.verifyPin();
-            uiHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(EidService.this, "PIN Valid", Toast.LENGTH_SHORT).show();
-                }
-            });
+        Uri uri = msg.getData().getParcelable("input");
+        String reason = msg.getData().getString("reason");
+        String location = msg.getData().getString("location");
+        String sign = msg.getData().getString("sign");
 
-        } catch (UserCancelException uce) {
-            uiHandler.post(new Runnable() {
+        File file = new File(uri.getPath());
+        String mimeType = getContentResolver().getType(uri);
+        if ("application/pdf".equals(mimeType)) {
+            File tmp = new File(getCacheDir().getAbsolutePath() + File.separator + file.getName());
+
+            //Prepare sign
+            PdfReader reader = new PdfReader(getContentResolver().openInputStream(uri));
+            PdfStamper stamper = PdfStamper.createSignature(reader, null, '\0', tmp, true);
+            PdfSignatureAppearance appearance = stamper.getSignatureAppearance();
+            appearance.setReason(reason);
+            appearance.setLocation(location);
+            if (sign != null)
+                appearance.setVisibleSignature(sign);
+
+            ExternalSignature pks = new ExternalSignature() {
                 @Override
-                public void run() {
-                    Toast.makeText(EidService.this, "PIN verification canceled", Toast.LENGTH_LONG).show();
+                public String getHashAlgorithm() {
+                    return "SHA256";
                 }
-            });
-        } catch (CardBlockedException cbe) {
-            uiHandler.post(new Runnable() {
+
                 @Override
-                public void run() {
-                    Toast.makeText(EidService.this, "eID Card Blocked!", Toast.LENGTH_LONG).show();
+                public String getEncryptionAlgorithm() {
+                    return "RSA";
                 }
-            });
+
+                @Override
+                public byte[] sign(byte[] bytes) throws GeneralSecurityException {
+                    MessageDigest messageDigest = MessageDigest.getInstance(getHashAlgorithm());
+                    byte hash[] = messageDigest.digest(bytes);
+
+                    try {
+                        return eidCardReader.signPkcs1(hash, EidCardReader.DigestAlg.SHA256, EidCardReader.Key.NON_REPUDIATION);
+                    } catch (Exception e) {
+                        throw new GeneralSecurityException(e);
+                    }
+                }
+            };
+            ExternalDigest digest = new BouncyCastleDigest();
+            Certificate[] chain = new Certificate[3];
+            chain[0] = eidCardReader.readCertificate(FileId.SIGN_CERT);
+            chain[1] = eidCardReader.readCertificate(FileId.INTCA_CERT);
+            chain[2] = eidCardReader.readCertificate(FileId.ROOTCA_CERT);
+            List<CrlClient> crlList = new LinkedList<CrlClient>();
+            crlList.add(new CrlClientOnline(new Certificate[] { chain[1] } )); //only request CRL of INT-CA
+            OcspClient ocspClient = new OcspClientBouncyCastle();
+            TSAClient tsaClient = new TSAClientBouncyCastle("http://tsa.belgium.be/connect");
+
+            //Sign
+            MakeSignature.signDetached(appearance, digest, pks, chain, crlList, ocspClient, tsaClient, 0, MakeSignature.CryptoStandard.CADES);
+
+            //finish
+            reader.close();
+            stamper.close();
+            Message rsp = Message.obtain(null, SIGN_RSP, 0, 0);
+            rsp.getData().putString("output", tmp.getAbsolutePath());
+            msg.replyTo.send(rsp);
         }
     }
 

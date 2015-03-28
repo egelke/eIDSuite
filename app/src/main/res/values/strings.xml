@@ -91,9 +91,16 @@
     <string name="class_unknown">unknown</string>
     <string name="class_video">video device</string>
     <string name="class_wireless_controller">wireless controller device</string>
-    <string name="title_activity_activity_pin">PIN</string>
 
-    <string name="hello_world">Hello world!</string>
+    <string-array name="sign_reasons">
+        <item>I am the author of this document</item>
+        <item>I have reviewed this document</item>
+        <item>I am approving this document</item>
+        <item>I attest to the accuracy and integrity of this document</item>
+        <item>I agree to the terms defined by the placement of my signature on this document</item>
+        <item>I agree to specified portions of this document</item>
+    </string-array>
+
     <string name="title_activity_pin">PIN</string>
 
 </resources>

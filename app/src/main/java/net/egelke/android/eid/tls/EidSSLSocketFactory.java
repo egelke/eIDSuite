@@ -30,11 +30,11 @@ import org.spongycastle.crypto.tls.AlertDescription;
 import org.spongycastle.crypto.tls.Certificate;
 import org.spongycastle.crypto.tls.CertificateRequest;
 import org.spongycastle.crypto.tls.DefaultTlsClient;
-import org.spongycastle.crypto.tls.HashAlgorithm;
-import org.spongycastle.crypto.tls.SignatureAlgorithm;
-import org.spongycastle.crypto.tls.SignatureAndHashAlgorithm;
-import org.spongycastle.crypto.tls.TlsAuthentication;
-import org.spongycastle.crypto.tls.TlsClientProtocol;
+//import org.spongycastle.crypto.tls.HashAlgorithm;
+//import org.spongycastle.crypto.tls.SignatureAlgorithm;
+//import org.spongycastle.crypto.tls.SignatureAndHashAlgorithm;
+//import org.spongycastle.crypto.tls.TlsAuthentication;
+//import org.spongycastle.crypto.tls.TlsClientProtocol;
 import org.spongycastle.crypto.tls.TlsCredentials;
 import org.spongycastle.crypto.tls.TlsFatalAlert;
 import org.spongycastle.crypto.tls.TlsSignerCredentials;
@@ -107,6 +107,7 @@ public class EidSSLSocketFactory extends SSLSocketFactory {
             s.connect(new InetSocketAddress(host, port));
         }
 
+        /*
         final TlsClientProtocol tlsClientProtocol = new TlsClientProtocol(s.getInputStream(), s.getOutputStream(), sr);
 
         //DefaultTlsSignerCredentials
@@ -517,6 +518,9 @@ public class EidSSLSocketFactory extends SSLSocketFactory {
                 throw new UnsupportedOperationException();
             }
         };
+        */
+
+        return null;
     }
 
     @Override
