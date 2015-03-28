@@ -128,8 +128,8 @@ public class EidService extends Service {
 
             NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                     .setSmallIcon(R.drawable.ic_stat_card)
-                    .setContentTitle("eID Service: Reader initialization")
-                    .setContentText("Your eID reader is being initialized")
+                    .setContentTitle(EidService.this.getText(R.string.notiRInit))
+                    .setContentText(EidService.this.getText(R.string.notiRInitMsg))
                     .setCategory(Notification.CATEGORY_SERVICE);
             PowerManager.WakeLock wl = powerMgr.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK, TAG);
 
@@ -160,20 +160,29 @@ public class EidService extends Service {
                 } finally {
                     eidCardReader.close();
                 }
-            } catch (IllegalStateException e) {
-                Log.w(TAG, "Failed to process message due to illegal state", e);
-                uiHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(EidService.this, "eID action failed", Toast.LENGTH_LONG).show();
-                    }
-                });
+            } catch (GeneralSecurityException gse) {
+                if (gse.getCause() instanceof UserCancelException) {
+                    uiHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(EidService.this, R.string.toastEidCanceled, Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                } else {
+                    Log.e(TAG, "Failed to process message due to security exception", gse);
+                    uiHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(EidService.this, R.string.toastEidFailed, Toast.LENGTH_LONG).show();
+                        }
+                    });
+                }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to process message", e);
                 uiHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        Toast.makeText(EidService.this, "eID action failed", Toast.LENGTH_LONG).show();
+                        Toast.makeText(EidService.this, R.string.toastEidFailed, Toast.LENGTH_LONG).show();
                     }
                 });
             } finally {
@@ -245,21 +254,10 @@ public class EidService extends Service {
     public IBinder onBind(Intent intent) {
         Log.d(TAG, "EidService onBind " + this);
         int count = 0;
-        while (count < 5 && (messenger == null || broadcast == null)) {
+        while (count < 10 && (messenger == null || broadcast == null)) {
             SystemClock.sleep(++count * 10);
         }
         return messenger.getBinder();
-    }
-
-    @Override
-    public boolean onUnbind(Intent intent) {
-        Log.d(TAG, "EidService onUnbind " + this);
-        return true;
-    }
-
-    @Override
-    public void onRebind(Intent intent) {
-        Log.d(TAG, "EidService onRebind " + this);
     }
 
     @Override
@@ -294,15 +292,12 @@ public class EidService extends Service {
 
     private void obtainUsbDevice() {
         ccidDevice = null;
-        List<String> unsupportedDevices = new LinkedList<String>();
         Map<String, UsbDevice> deviceList = usbManager.getDeviceList();
         Iterator<UsbDevice> deviceIterator = deviceList.values().iterator();
         while (ccidDevice == null && deviceIterator.hasNext()) {
             UsbDevice device = deviceIterator.next();
             if (CCID.isCCIDCompliant(device)) {
                 ccidDevice = device;
-            } else {
-                unsupportedDevices.add(getProductName(device));
             }
         }
 
@@ -321,14 +316,13 @@ public class EidService extends Service {
                             wait.notify();
                         }
                     } else {
-                        String product = getProductName(device);
-                        NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
-                                .setSmallIcon(R.drawable.ic_stat_card)
-                                .setContentTitle(product + " is an unknown device")
-                                .setContentText("The " + product + " you connected isn't a supported (CCID) reader")
-                                .setCategory(Notification.CATEGORY_SERVICE)
-                                .setPriority(NotificationCompat.PRIORITY_HIGH);
-                        notifyMgr.notify(notifyId++, builder.build());
+                        final String product = getProductName(device);
+                        uiHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(EidService.this, String.format(EidService.this.getString(R.string.toastUnknownDevice), product), Toast.LENGTH_LONG).show();
+                            }
+                        });
                     }
                 }
             };
@@ -336,27 +330,15 @@ public class EidService extends Service {
 
             NotificationCompat.Builder builder = new NotificationCompat.Builder(this)
                     .setSmallIcon(R.drawable.ic_stat_card)
-                    .setContentTitle("eID Service: Connect your reader")
-                    .setContentText("Please connect your eID reader to the tablet/phone")
+                    .setContentTitle(EidService.this.getString(R.string.notiConnect))
+                    .setContentText(EidService.this.getString(R.string.notiConnectMsg))
                     .setCategory(Notification.CATEGORY_SERVICE)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_LIGHTS);
-            NotificationCompat.InboxStyle inboxStyle = new NotificationCompat.InboxStyle();
-            inboxStyle.setBigContentTitle("eID Service: Connect your eID reader");
-            inboxStyle.setSummaryText("Please connect your eID reader to the tablet/phone");
-            if (unsupportedDevices.size() == 0) {
-                inboxStyle.addLine("No USB devices detected");
-            } else {
-                inboxStyle.addLine("Incompatible USB devices detected:");
-            }
-            for (String device : unsupportedDevices) {
-                inboxStyle.addLine("\t" + device);
-            }
-            builder.setStyle(inboxStyle);
             uiHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(EidService.this, "Please connect your reader", Toast.LENGTH_LONG).show();
+                    Toast.makeText(EidService.this, R.string.notiConnectMsg, Toast.LENGTH_LONG).show();
                 }
             });
 
@@ -403,8 +385,7 @@ public class EidService extends Service {
             }
             wait = null;
             unregisterReceiver(grantReceiver);
-            if (!usbManager.hasPermission(ccidDevice))
-                throw new IllegalStateException("No USB permission granted");
+            if (!usbManager.hasPermission(ccidDevice)) throw new IllegalStateException("No USB permission granted");
         }
     }
 
@@ -459,8 +440,8 @@ public class EidService extends Service {
     public void obtainEidCard() {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                 .setSmallIcon(R.drawable.ic_stat_card)
-                .setContentTitle("eID Service: Card initialization")
-                .setContentText("Your eID card is being initialized")
+                .setContentTitle(EidService.this.getString(R.string.notiCInit))
+                .setContentText(EidService.this.getString(R.string.notiCInitMsg))
                 .setCategory(Notification.CATEGORY_SERVICE);
         notifyMgr.notify(1, builder.build());
         if (!eidCardReader.isCardPresent()) {
@@ -482,19 +463,20 @@ public class EidService extends Service {
                 }
             });
 
+            final String msg = String.format(EidService.this.getString(R.string.notiInsertMsg),
+                    Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP ? "" :
+                    getProductNameFromOs(ccidDevice));
             builder = new NotificationCompat.Builder(this)
                     .setSmallIcon(R.drawable.ic_stat_card)
-                    .setContentTitle("eID Service: Insert your eID")
-                    .setContentText(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
-                            ? "Please insert your eID in your " + getProductNameFromOs(ccidDevice) + " eID reader"
-                            : "Please insert your eID in your eID reader")
+                    .setContentTitle(EidService.this.getString(R.string.notiInsert))
+                    .setContentText(msg)
                     .setCategory(Notification.CATEGORY_SERVICE)
                     .setPriority(NotificationCompat.PRIORITY_MAX)
                     .setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_LIGHTS);
             uiHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(EidService.this, "Please insert your eID", Toast.LENGTH_LONG).show();
+                    Toast.makeText(EidService.this, msg, Toast.LENGTH_LONG).show();
                 }
             });
 
@@ -510,16 +492,15 @@ public class EidService extends Service {
             wait = null;
             eidCardReader.setEidCardCallback(null);
 
-            if (!eidCardReader.isCardPresent())
-                throw new IllegalStateException("No eID card present");
+            if (!eidCardReader.isCardPresent()) throw new IllegalStateException("No eID card present");
         }
     }
 
     private void readData(Message msg) throws RemoteException, IOException, CertificateException {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                 .setSmallIcon(R.drawable.ic_stat_card)
-                .setContentTitle("eID Service: Card read")
-                .setContentText("The data (e.g. identity, address, photo) of your eID card is being read")
+                .setContentTitle(EidService.this.getString(R.string.notiRead))
+                .setContentText(EidService.this.getString(R.string.notiReadMsg))
                 .setCategory(Notification.CATEGORY_SERVICE);
         notifyMgr.notify(1, builder.build());
         for (FileId fileId : FileId.values()) {
@@ -541,10 +522,10 @@ public class EidService extends Service {
     }
 
     public void verifyPin(Message msg) throws IOException {
-        NotificationCompat.Builder builder = builder = new NotificationCompat.Builder(EidService.this)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                 .setSmallIcon(R.drawable.ic_stat_card)
-                .setContentTitle("eID Service: Verify PIN")
-                .setContentText("The PIN of your eID is being verified")
+                .setContentTitle(EidService.this.getString(R.string.notiVerify))
+                .setContentText(EidService.this.getString(R.string.notiVerifyMsg))
                 .setCategory(Notification.CATEGORY_SERVICE);
         notifyMgr.notify(1, builder.build());
 
@@ -553,7 +534,7 @@ public class EidService extends Service {
             uiHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(EidService.this, "PIN Valid", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(EidService.this, R.string.toastPinValid, Toast.LENGTH_SHORT).show();
                 }
             });
 
@@ -561,14 +542,14 @@ public class EidService extends Service {
             uiHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(EidService.this, "PIN verification canceled", Toast.LENGTH_LONG).show();
+                    Toast.makeText(EidService.this, R.string.toastPinCanceled, Toast.LENGTH_LONG).show();
                 }
             });
         } catch (CardBlockedException cbe) {
             uiHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    Toast.makeText(EidService.this, "eID Card Blocked!", Toast.LENGTH_LONG).show();
+                    Toast.makeText(EidService.this, R.string.toastPinBlocked, Toast.LENGTH_LONG).show();
                 }
             });
         }
@@ -577,8 +558,8 @@ public class EidService extends Service {
     public void authenticate(Message msg) throws IOException, RemoteException {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                 .setSmallIcon(R.drawable.ic_stat_card)
-                .setContentTitle("eID Service: Authenticating")
-                .setContentText("Your eID is being used to authenticate")
+                .setContentTitle(EidService.this.getString(R.string.notiAuth))
+                .setContentText(EidService.this.getString(R.string.notiAuthyMsg))
                 .setCategory(Notification.CATEGORY_SERVICE);
         notifyMgr.notify(1, builder.build());
 
@@ -609,8 +590,8 @@ public class EidService extends Service {
     public void sign(Message msg) throws IOException, DocumentException, GeneralSecurityException, RemoteException {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                 .setSmallIcon(R.drawable.ic_stat_card)
-                .setContentTitle("eID Service: Signing")
-                .setContentText("Your eID is being used to sign")
+                .setContentTitle(EidService.this.getString(R.string.notiSign))
+                .setContentText(EidService.this.getString(R.string.notiSignMsg))
                 .setCategory(Notification.CATEGORY_SERVICE);
         notifyMgr.notify(1, builder.build());
 

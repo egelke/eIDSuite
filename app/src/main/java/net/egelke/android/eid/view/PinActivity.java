@@ -50,6 +50,7 @@ public class PinActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pin);
+        setFinishOnTouchOutside(false);
 
         int retries = getIntent().getIntExtra(EXTRA_RETRIES, -1);
         pi = getIntent().getParcelableExtra(EXTRA_BROADCAST);
@@ -89,6 +90,12 @@ public class PinActivity extends Activity {
         });
 
 
+    }
+
+    @Override
+    public void onBackPressed() {
+        failure();
+        super.onBackPressed();
     }
 
     private void success() {

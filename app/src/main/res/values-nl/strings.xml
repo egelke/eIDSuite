@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="title_activity_view">eID Kijker</string>
+    <string name="title_activity_sign">eID Tekener</string>
+    <string name="title_activity_auth">eID Authenticater</string>
+    <string name="title_activity_pin">PIN</string>
+
+    <string name="action_settings">Instellingen</string>
+    <string name="action_card">Kaart</string>
+    <string name="action_pin">Controleer PIN</string>
+    <string name="action_cancel">Annuleren</string>
+    <string name="action_ok">OK</string>
+    <string name="action_close">Sluiten</string>
+    <string name="action_refresh">Verniewen</string>
+    <string name="action_downloads">Downloads</string>
+    <string name="action_locate">Bepaal locatie</string>
+
+    <string name="cancelSsl">Go Terug</string>
+    <string name="contSsl">Doorgaan</string>
+
+    <string name="notiRInit">eID Service: Lezer initialisatie</string>
+    <string name="notiRInitMsg">Uw eID lezer wordt geïnitialiseerd</string>
+    <string name="notiConnect">eID Service: Sluit je lezer aan</string>
+    <string name="notiConnectMsg">Gelieve uw eID lezer om de tablet/telefoon aan te sluiten</string>
+    <string name="notiCInit">eID Service: Initialiseren van de kaart</string>
+    <string name="notiCInitMsg">Uw eID-kaart wordt geïnitialiseerd</string>
+    <string name="notiInsert">eID Service: Plaats uw eID</string>
+    <string name="notiInsertMsg">Gelieve uw eID in je %1$s eID-lezer te plaatsen</string>
+    <string name="notiRead">eID Service: Kaart lezen</string>
+    <string name="notiReadMsg">De gegevens (bijv identiteit, adres, foto) van uw eID kaart worden gelezen</string>
+    <string name="notiVerify">eID Service: Controleer PIN</string>
+    <string name="notiVerifyMsg">De PIN-code van je eID wordt gecontroleerd</string>
+    <string name="notiAuth">eID Service: Authentiseren</string>
+    <string name="notiAuthyMsg">Uw eID wordt gebruikt voor authenticatie</string>
+    <string name="notiSign">eID Service: Ondertekenen</string>
+    <string name="notiSignMsg">Uw eID wordt gebruikt voor het ondertekenen</string>
+
+    <string name="toastEidFailed">de eID actie is mislukt</string>
+    <string name="toastEidCanceled">de eID actie is geannuleerd</string>
+    <string name="toastUnknownDevice">Het aangesloten apparaat (%1$s) wordt niet herkend</string>
+    <string name="toastPinValid">PIN geldig</string>
+    <string name="toastPinCanceled">PIN controle geannuleerd</string>
+    <string name="toastPinBlocked">eID-kaart geblokkeerd!</string>
+    <string name="toastSignReady">Ondertekend document klaar</string>
+
+    <string name="fragment_person">Persoon</string>
+    <string name="fragment_address">Adres</string>
+    <string name="fragment_photo">Foto</string>
+    <string name="fragment_card">Kaart</string>
+    <string name="fragment_identity">Identiteit</string>
+    <string name="fragment_idandcard">Identiteit &amp; Kaart</string>
+
+    <string name="name">Naam:</string>
+    <string name="gNames">Voornamen:</string>
+    <string name="birthPlace">Geboorteplaats:</string>
+    <string name="birthDate">Geboortedatum:</string>
+    <string name="natNumber">Nationaal nummer:</string>
+    <string name="nationality">Nationaliteit:</string>
+    <string name="title">Titel:</string>
+    <string name="specialStatus">Speciale status:</string>
+    <string name="sex">Geslacht:</string>
+
+    <string name="street">Straat:</string>
+    <string name="zip">Postcode:</string>
+    <string name="municipality">Gemeente:</string>
+
+    <string name="photoDesc">eID foto</string>
+
+    <string name="cardnr">Kaartnummer:</string>
+    <string name="issuePlace">Plaats van afgifte:</string>
+    <string name="chipnr">Chip nummer:</string>
+    <string name="validFrom">Geldig vanaf:</string>
+    <string name="validTo">Geldig tot:</string>
+
+    <string name="usage">Gebruiken:</string>
+
+    <string name="selectFile">Kies een bestand</string>
+    <string name="reason">Reden</string>
+    <string name="location">Locatie</string>
+    <string name="signFields">Handtekening velden</string>
+    <string name="invSign">Onzichtbare handtekening</string>
+    <string name="select">kiezen</string>
+    <string name="view">Toon</string>
+    <string name="sign">Teken</string>
+
+    <string name="status_whiteCane">witte stok</string>
+    <string name="status_yellowCane">gele stok</string>
+    <string name="status_extMinority">verlengde minderjarigheid</string>
+
+    <string name="cardtype_citizen">IDENTITEITSKAART</string>
+    <string name="cardtype_kids">KIDS-ID</string>
+    <string name="cardtype_a">VREEMDELINGENKAART A</string>
+    <string name="cardtype_b">VREEMDELINGENKAART B</string>
+    <string name="cardtype_c">VREEMDELINGENKAART C</string>
+    <string name="cardtype_d">VREEMDELINGENKAART D</string>
+    <string name="cardtype_e">VREEMDELINGENKAART E</string>
+    <string name="cardtype_eplus">VREEMDELINGENKAART E+</string>
+    <string name="cardtype_f">VREEMDELINGENKAART F</string>
+    <string name="cardtype_fplus">VREEMDELINGENKAART F+</string>
+
+    <string name="sex_male">Man</string>
+    <string name="sex_female">Vrouw</string>
+
+    <string name="class_audio">audioapparaat</string>
+    <string name="class_cdc_data">(CDC) communicatie-apparaat</string>
+    <string name="class_comm">communicatie-apparaat</string>
+    <string name="class_content_sec">beveiligingsapparaat</string>
+    <string name="class_hid">apparaat voor menselijke interactie</string>
+    <string name="class_hub">USB hub</string>
+    <string name="class_mass_storage">apparaat voor massaopslag</string>
+    <string name="class_misc">(diverse) draadloos apparaat</string>
+    <string name="class_physica">fysieke apparaat</string>
+    <string name="class_printer">printer</string>
+    <string name="class_still_image">stilstaand beeld-apparaat</string>
+    <string name="class_unknown">onbekend</string>
+    <string name="class_video">videoapparaat</string>
+    <string name="class_wireless_controller">draadloze controller apparaat</string>
+
+    <string-array name="sign_reasons">
+        <item>Ik ben de auteur van dit document</item>
+        <item>Ik heb dit document gereviseerd</item>
+        <item>Ik keur dit document goed</item>
+        <item>Ik verklaar dat de inhoud van dit document nauwkeurig en volledig is</item>
+        <item>Ik ga akkoord met de voorwaarden voor het plaatsen van mijn handtekening op dit document</item>
+        <item>Ik ga akkoord met de opgegeven gedeelten van dit document</item>
+    </string-array>
+    <string name="usage_cRLSign">CRL ondertekening</string>
+    <string name="usage_dataEncipherment">data-codering</string>
+    <string name="usage_decipherOnly">alleen ontcijferen</string>
+    <string name="usage_digitalSignature">digitale handtekening</string>
+    <string name="usage_encipherOnly">alleen coderen</string>
+    <string name="usage_keyAgreement">sleutel overeenkomst</string>
+    <string name="usage_keyCertSign">certificaat ondertekening</string>
+    <string name="usage_keyEncipherment">sleutel coderen</string>
+    <string name="usage_nonRepudiation">Onweerlegbaarheid</string>
+    <string name="toastFailedLocate">Locatie niet tijdig bepaald</string>
+    <string name="toastDownlComplete">Download compleet</string>
+    <string name="toastDownlFailed">Download onderbroken</string>
+
+
+</resources>

@@ -4,37 +4,18 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    tools:context="net.egelke.android.eid.view.SignActivity">
+    tools:context=".view.SignActivity">
 
     <TextView
         android:id="@+id/signFile"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="@string/selectFile"
         android:textAppearance="?android:attr/textAppearanceLarge"/>
-
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Signature fields:"
-        style="?android:listSeparatorTextViewStyle"/>
-
-    <CheckBox
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Invisible signature"
-        android:id="@+id/signInv" />
-
-    <ListView
-        android:id="@+id/signFields"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:choiceMode="singleChoice" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Reason: "
+        android:text="@string/reason"
         style="?android:listSeparatorTextViewStyle"/>
 
     <Spinner
@@ -45,12 +26,33 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Location: "
+        android:text="@string/location"
         style="?android:listSeparatorTextViewStyle"/>
     <EditText
         android:id="@+id/location"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/signFields"
+        style="?android:listSeparatorTextViewStyle"/>
+
+    <CheckBox
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/invSign"
+        android:enabled="false"
+        android:id="@+id/signInv" />
+
+    <ListView
+        android:id="@+id/signFields"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:choiceMode="singleChoice" />
+
+
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
@@ -58,20 +60,20 @@
             android:id="@+id/select"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Select"
+            android:text="@string/select"
             />
         <Button
             android:id="@+id/view"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="View"
+            android:text="@string/view"
             android:enabled="false"
             android:layout_centerHorizontal="true" />
         <Button
             android:id="@+id/sign"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Sign"
+            android:text="@string/sign"
             android:enabled="false"
             android:layout_alignParentRight="true" />
         </RelativeLayout>

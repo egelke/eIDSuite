@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">eID Suite</string>
+    <string name="app_name" translatable="false">eID Suite</string>
     <string name="title_activity_view">eID Viewer</string>
     <string name="title_activity_sign">eID Signer</string>
     <string name="title_activity_auth">eID Authenticator</string>
+    <string name="title_activity_pin">PIN</string>
 
     <string name="action_settings">Settings</string>
     <string name="action_card">Card</string>
@@ -14,9 +15,38 @@
     <string name="action_close">Close</string>
     <string name="action_refresh">Refresh</string>
     <string name="action_downloads">Downloads</string>
+    <string name="action_locate">Update Location</string>
 
     <string name="cancelSsl">Go Back</string>
     <string name="contSsl">Continue</string>
+
+    <string name="notiRInit">eID Service: Reader initialization</string>
+    <string name="notiRInitMsg">Your eID reader is being initialized</string>
+    <string name="notiConnect">eID Service: Connect your reader</string>
+    <string name="notiConnectMsg">Please connect your eID reader to the tablet/phone</string>
+    <string name="notiCInit">eID Service: Card initialization</string>
+    <string name="notiCInitMsg">Your eID card is being initialized</string>
+    <string name="notiInsert">eID Service: Insert your eID</string>
+    <string name="notiInsertMsg">Please insert your eID in your %1$s eID reader</string>
+    <string name="notiRead">eID Service: Card read</string>
+    <string name="notiReadMsg">The data (e.g. identity, address, photo) of your eID card is being read</string>
+    <string name="notiVerify">eID Service: Verify PIN</string>
+    <string name="notiVerifyMsg">The PIN of your eID is being verified</string>
+    <string name="notiAuth">eID Service: Authenticating</string>
+    <string name="notiAuthyMsg">Your eID is being used to authenticate</string>
+    <string name="notiSign">eID Service: Signing</string>
+    <string name="notiSignMsg">Your eID is being used to sign</string>
+
+    <string name="toastEidFailed">eID action failed</string>
+    <string name="toastEidCanceled">eID action canceled</string>
+    <string name="toastUnknownDevice">The connected device (%1$s) is not recognised</string>
+    <string name="toastPinValid">PIN Valid</string>
+    <string name="toastPinCanceled">PIN verification canceled</string>
+    <string name="toastPinBlocked">eID Card Blocked!</string>
+    <string name="toastSignReady">Signed document ready</string>
+    <string name="toastFailedLocate">Location not determined in a timely manner</string>
+    <string name="toastDownlComplete">Download complete</string>
+    <string name="toastDownlFailed">Download failed</string>
 
     <string name="fragment_person">Person</string>
     <string name="fragment_address">Address</string>
@@ -48,6 +78,15 @@
     <string name="validTo">Valid until:</string>
 
     <string name="usage">Usages:</string>
+
+    <string name="selectFile">Select a file</string>
+    <string name="reason">Reason</string>
+    <string name="location">Location</string>
+    <string name="signFields">Signature Fields</string>
+    <string name="invSign">Invisible Signature</string>
+    <string name="select">Select</string>
+    <string name="view">View</string>
+    <string name="sign">Sign</string>
 
     <string name="status_whiteCane">white cane</string>
     <string name="status_yellowCane">yellow cane</string>
@@ -101,6 +140,6 @@
         <item>I agree to specified portions of this document</item>
     </string-array>
 
-    <string name="title_activity_pin">PIN</string>
+
 
 </resources>

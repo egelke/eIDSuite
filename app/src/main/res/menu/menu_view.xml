@@ -6,6 +6,4 @@
         android:icon="@drawable/ic_action_card" android:title="@string/action_card" />
     <item android:id="@+id/action_pin" android:title="@string/action_pin"
         android:orderInCategory="50" app:showAsAction="never" />
-    <item android:id="@+id/action_settings" android:title="@string/action_settings"
-        android:orderInCategory="100" app:showAsAction="never" />
 </menu>

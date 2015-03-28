@@ -18,6 +18,7 @@
 package net.egelke.android.eid.view;
 
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -34,21 +35,18 @@ import android.location.LocationManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
-import android.os.RemoteException;
 import android.provider.OpenableColumns;
-import android.support.v7.app.ActionBarActivity;
-import android.os.Bundle;
-import android.text.method.CharacterPickerDialog;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
+import android.view.Window;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -59,32 +57,31 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.itextpdf.text.Rectangle;
-import com.itextpdf.text.pdf.AcroFields;
-import com.itextpdf.text.pdf.PdfAnnotation;
-import com.itextpdf.text.pdf.PdfFormField;
 import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.PdfStamper;
 
 import net.egelke.android.eid.EidService;
 import net.egelke.android.eid.R;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 
-public class SignActivity extends ActionBarActivity {
+public class SignActivity extends Activity {
 
     private static final String TAG = "net.egelke.android.eid";
     private static final String ACTION_LOCATED = "net.egelke.android.eid.LOCATED";
     private static final int INPUT_REQUEST_CODE = 1;
     private static final int WRITE_REQUEST_CODE = 2;
+
+    private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     private class CopyFile extends AsyncTask<Uri, Void, Void> {
 
@@ -116,11 +113,18 @@ public class SignActivity extends ActionBarActivity {
 
         @Override
         protected void onPostExecute(Void aVoid) {
-            Toast.makeText(SignActivity.this, "Signed document ready", Toast.LENGTH_SHORT).show();
+            Toast.makeText(SignActivity.this, SignActivity.this.getString(R.string.toastSignReady), Toast.LENGTH_SHORT).show();
+            setProgressBarIndeterminateVisibility(false);
         }
     }
 
     private class Locate extends AsyncTask<Location, Void, String> {
+
+        private boolean endProgress;
+
+        public Locate(boolean endProgress) {
+            this.endProgress = endProgress;
+        }
 
         @Override
         protected String doInBackground(Location... params) {
@@ -141,6 +145,7 @@ public class SignActivity extends ActionBarActivity {
         @Override
         protected void onPostExecute(String s) {
             location.setText(s != null ? s : "");
+            if (endProgress) setProgressBarIndeterminateVisibility(false);
         }
     }
 
@@ -171,11 +176,13 @@ public class SignActivity extends ActionBarActivity {
             signNames.setEnabled(!strings.isEmpty());
             if (!strings.isEmpty())
                 signNames.setItemChecked(0, true);
+            setProgressBarIndeterminateVisibility(false);
         }
     }
 
     //instance
     private Messenger mEidService = null;
+    private BroadcastReceiver bcReceiver;
     private LocationManager locationManager;
     private String locationProvider;
     private String locationProviderDetailed;
@@ -192,6 +199,7 @@ public class SignActivity extends ActionBarActivity {
     //Session
     private Uri src;
     private File tmp;
+    private ScheduledFuture locationCancel;
 
     private ServiceConnection mConnection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder service) {
@@ -217,7 +225,7 @@ public class SignActivity extends ActionBarActivity {
                         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
                         intent.addCategory(Intent.CATEGORY_OPENABLE);
                         intent.setType("application/pdf");
-                        intent.putExtra(Intent.EXTRA_TITLE, filename);
+                        intent.putExtra(Intent.EXTRA_TITLE, file.getText().toString());
                         startActivityForResult(intent, WRITE_REQUEST_CODE);
                     }
                     return true;
@@ -229,17 +237,24 @@ public class SignActivity extends ActionBarActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        getWindow().requestFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sign);
 
-        registerReceiver(new BroadcastReceiver() {
+        bcReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (ACTION_LOCATED.equals(intent.getAction())) {
-                    (new Locate()).execute((Location)intent.getParcelableExtra(LocationManager.KEY_LOCATION_CHANGED));
+                    (new Locate(true)).execute((Location) intent.getParcelableExtra(LocationManager.KEY_LOCATION_CHANGED));
+                    if (locationCancel != null) {
+                        locationCancel.cancel(false);
+                        locationCancel = null;
+                    }
                 }
             }
-        }, new IntentFilter(ACTION_LOCATED));
+        };
+        registerReceiver(bcReceiver, new IntentFilter(ACTION_LOCATED));
 
         locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         Criteria criteria = new Criteria();
@@ -281,6 +296,8 @@ public class SignActivity extends ActionBarActivity {
         select.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                setProgressBarIndeterminateVisibility(true);
+
                 Intent intent;
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
                     intent = new Intent(Intent.ACTION_GET_CONTENT);
@@ -333,6 +350,7 @@ public class SignActivity extends ActionBarActivity {
                     startActivityForResult(intent, WRITE_REQUEST_CODE);
                     */
 
+                    setProgressBarIndeterminateVisibility(true);
                     final Message msg = Message.obtain(null, EidService.SIGN, 0, 0);
                     msg.getData().putParcelable("input", src);
                     msg.getData().putString("reason", (String)reason.getSelectedItem());
@@ -350,6 +368,8 @@ public class SignActivity extends ActionBarActivity {
 
         location = (EditText) findViewById(R.id.location);
 
+        (new Locate(false)).execute(locationManager.getLastKnownLocation(locationProvider));
+        //locationManager.requestSingleUpdate(locationProvider, PendingIntent.getBroadcast(SignActivity.this, 0, new Intent(ACTION_LOCATED), 0));
     }
 
 
@@ -361,22 +381,36 @@ public class SignActivity extends ActionBarActivity {
     }
 
     @Override
-    protected void onStart() {
-        super.onStart();
-
-        (new Locate()).execute(locationManager.getLastKnownLocation(locationProvider));
-        locationManager.requestSingleUpdate(locationProvider, PendingIntent.getBroadcast(SignActivity.this, 0, new Intent(ACTION_LOCATED), 0));
-    }
-
-    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.action_settings:
+            case R.id.action_downloads:
+                Intent i = new Intent();
+                i.setAction(DownloadManager.ACTION_VIEW_DOWNLOADS);
+                startActivity(i);
+                return true;
+            case R.id.action_locate:
+                setProgressBarIndeterminateVisibility(true);
+                final PendingIntent pi = PendingIntent.getBroadcast(SignActivity.this, 0, new Intent(ACTION_LOCATED), 0);
+                locationManager.requestSingleUpdate(locationProvider, pi);
+                locationCancel = scheduler.schedule(new Runnable() {
+                    @Override
+                    public void run() {
+                        locationManager.removeUpdates(pi);
+                        locationCancel = null;
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                setProgressBarIndeterminateVisibility(false);
+                                Toast.makeText(SignActivity.this, R.string.toastFailedLocate, Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                }, 20, TimeUnit.SECONDS);
+
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
-
     }
 
     @Override
@@ -419,6 +453,7 @@ public class SignActivity extends ActionBarActivity {
         if (mEidService != null) {
             unbindService(mConnection);
         }
+        unregisterReceiver(bcReceiver);
         super.onDestroy();
     }
 }

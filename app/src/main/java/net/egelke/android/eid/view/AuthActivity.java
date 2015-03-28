@@ -99,9 +99,9 @@ public class AuthActivity extends Activity {
                 if (c.moveToFirst()) {
                     int sIndex = c.getColumnIndex(DownloadManager.COLUMN_STATUS);
                     if (DownloadManager.STATUS_SUCCESSFUL == c.getInt(sIndex)) {
-                        Toast.makeText(AuthActivity.this, "Download complete", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(AuthActivity.this, R.string.toastDownlComplete, Toast.LENGTH_SHORT).show();
                     } else {
-                        Toast.makeText(AuthActivity.this, "Download failed", Toast.LENGTH_LONG).show();
+                        Toast.makeText(AuthActivity.this, R.string.toastDownlFailed, Toast.LENGTH_LONG).show();
                     }
                 }
             }
@@ -159,7 +159,7 @@ public class AuthActivity extends Activity {
 
         @Override
         public void onReceivedIcon(WebView view, Bitmap icon) {
-            Bitmap base = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
+            Bitmap base = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher_a);
             base = base.copy(base.getConfig(), true);
 
             Canvas canvas = new Canvas(base);
@@ -333,9 +333,6 @@ public class AuthActivity extends Activity {
                 Intent i = new Intent();
                 i.setAction(DownloadManager.ACTION_VIEW_DOWNLOADS);
                 startActivity(i);
-                return true;
-            case R.id.action_close:
-                finish();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
