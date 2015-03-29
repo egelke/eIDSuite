@@ -368,7 +368,7 @@ public class SignActivity extends Activity {
 
         location = (EditText) findViewById(R.id.location);
 
-        (new Locate(false)).execute(locationManager.getLastKnownLocation(locationProvider));
+        if (locationProvider != null) (new Locate(false)).execute(locationManager.getLastKnownLocation(locationProvider));
         //locationManager.requestSingleUpdate(locationProvider, PendingIntent.getBroadcast(SignActivity.this, 0, new Intent(ACTION_LOCATED), 0));
     }
 
@@ -377,6 +377,7 @@ public class SignActivity extends Activity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_sign, menu);
+        menu.findItem(R.id.action_locate).setEnabled(locationProvider != null);
         return true;
     }
 
