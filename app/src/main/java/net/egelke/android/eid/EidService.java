@@ -60,6 +60,7 @@ import com.itextpdf.text.pdf.security.TSAClient;
 import com.itextpdf.text.pdf.security.TSAClientBouncyCastle;
 
 import net.egelke.android.eid.belpic.FileId;
+import net.egelke.android.eid.reader.Diagnose;
 import net.egelke.android.eid.reader.EidCardCallback;
 import net.egelke.android.eid.reader.EidCardReader;
 import net.egelke.android.eid.reader.PinCallback;
@@ -110,11 +111,13 @@ public class EidService extends Service {
     public static final int VERIFY_PIN = 5;
     public static final int AUTH = 10;
     public static final int SIGN = 11;
+    public static final int DIAG = 99;
 
     //Action Response
     public static final int DATA_RSP = 101;
     public static final int AUTH_RSP = 110;
     public static final int SIGN_RSP = 111;
+    public static final int DIAG_RSP = 199;
 
     private class IncomingHandler extends Handler {
 
@@ -126,6 +129,8 @@ public class EidService extends Service {
                 return;
             }
 
+
+
             NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                     .setSmallIcon(R.drawable.ic_stat_card)
                     .setContentTitle(EidService.this.getText(R.string.notiRInit))
@@ -136,6 +141,11 @@ public class EidService extends Service {
             wl.acquire();
             startForeground(1, builder.build());
             try {
+                if (msg.what == DIAG) {
+                    diagnose(msg);
+                    return;
+                }
+
                 obtainUsbDevice();
                 obtainUsbPermission();
                 obtainEidReader();
@@ -494,6 +504,38 @@ public class EidService extends Service {
 
             if (!eidCardReader.isCardPresent()) throw new IllegalStateException("No eID card present");
         }
+    }
+
+    private void diagnose(Message msg) throws RemoteException {
+        boolean foundDevice = false;
+        boolean foundCard = false;
+        boolean foundEid = false;
+        StringBuilder builder = new StringBuilder();
+        builder.append("Diagnose results: ");
+
+        Map<String, UsbDevice> deviceList = usbManager.getDeviceList();
+        Iterator<UsbDevice> deviceIterator = deviceList.values().iterator();
+        while (deviceIterator.hasNext()) {
+            ccidDevice = deviceIterator.next();
+            try {
+                obtainUsbPermission();
+                Diagnose d = new EidCardReader(usbManager, ccidDevice).diagnose();
+                builder.append("\r\n\r\n");
+                builder.append(d.toString());
+
+                foundDevice = true;
+                if (d.hasCard()) foundCard = true;
+                if (d.hasEid()) foundEid = true;
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to diagnose device", e);
+            } finally {
+                ccidDevice = null;
+            }
+        }
+
+        Message rsp = Message.obtain(null, DIAG_RSP, foundDevice ? 0 : 1,  foundEid ? 0 : (foundCard ? 1 : 2));
+        rsp.getData().putString("Result", builder.toString());
+        msg.replyTo.send(rsp);
     }
 
     private void readData(Message msg) throws RemoteException, IOException, CertificateException {

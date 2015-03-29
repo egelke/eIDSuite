@@ -273,12 +273,12 @@ public class AuthActivity extends Activity {
             builder.setMessage("There are problems with the security certificate for this site")
                     .setIcon(R.drawable.ic_action_warning)
                     .setTitle("Security Warning");
-            builder.setNegativeButton(R.string.cancelSsl, new DialogInterface.OnClickListener() {
+            builder.setNegativeButton(R.string.goback, new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int id) {
                     handler.cancel();
                 }
             });
-            builder.setPositiveButton(R.string.contSsl, new DialogInterface.OnClickListener() {
+            builder.setPositiveButton(R.string.cont, new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int id) {
                     handler.proceed();
                 }

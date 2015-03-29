@@ -17,16 +17,21 @@
 */
 package net.egelke.android.eid.view;
 
+import android.app.AlertDialog;
+import android.app.DatePickerDialog;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.SystemClock;
+import android.support.v4.app.DialogFragment;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -36,6 +41,7 @@ import android.support.v4.view.ViewPager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 
 import net.egelke.android.eid.EidService;
 import net.egelke.android.eid.R;
@@ -49,7 +55,7 @@ import net.egelke.android.eid.viewmodel.ViewModel;
 import java.io.ByteArrayInputStream;
 
 
-public class ViewActivity extends ActionBarActivity {
+public class ViewActivity extends ActionBarActivity implements StartDiagDialog.Listener {
 
     private static final String TAG = "net.egelke.android.eid";
 
@@ -159,6 +165,8 @@ public class ViewActivity extends ActionBarActivity {
         }
     }
 
+    private boolean retry = false;
+
     private ViewPager mViewPager;
 
     private Messenger mEidService = null;
@@ -185,6 +193,22 @@ public class ViewActivity extends ActionBarActivity {
                             return true;
                         default:
                             return false;
+                    }
+                case EidService.DIAG_RSP:
+                    if (msg.arg1 > 0) {
+                        Toast.makeText(ViewActivity.this, R.string.toastDiagNoDevices, Toast.LENGTH_LONG).show();
+                    } else {
+                        if (msg.arg2 == 0) {
+                            Toast.makeText(ViewActivity.this, R.string.toastDiagSuccess, Toast.LENGTH_LONG).show();
+                        } else if (msg.arg2 == 2 && !retry) {
+                            retry = true;
+                            Toast.makeText(ViewActivity.this, R.string.toastDiagNoCard, Toast.LENGTH_LONG).show();
+                        } else {
+                            retry = false;
+                            DialogFragment dialog = new EndDiagDialog();
+                            dialog.setArguments(msg.getData());
+                            dialog.show(getSupportFragmentManager(), "EndDiagDialogFragment");
+                        }
                     }
                 default:
                     return false;
@@ -262,6 +286,10 @@ public class ViewActivity extends ActionBarActivity {
                     msg = Message.obtain(null, EidService.VERIFY_PIN, 0, 0);
                     mEidService.send(msg);
                     return true;
+                case R.id.action_diag:
+                    DialogFragment dialog = new StartDiagDialog();
+                    dialog.show(getSupportFragmentManager(), "StartDiagDialogFragment");
+                    return true;
                 default:
                     return false;
             }
@@ -269,6 +297,17 @@ public class ViewActivity extends ActionBarActivity {
             //TODO: toast
             Log.e(TAG, "Failed to send message to eID Service", e);
             return true;
+        }
+    }
+
+    @Override
+    public void onStartDiag() {
+        try {
+            Message msg = Message.obtain(null, EidService.DIAG, 0, 0);
+            msg.replyTo = mEidServiceResponse;
+            mEidService.send(msg);
+        } catch (Exception e) {
+            //TODO:toast.
         }
     }
 

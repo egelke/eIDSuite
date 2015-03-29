@@ -16,9 +16,12 @@
     <string name="action_refresh">Refresh</string>
     <string name="action_downloads">Downloads</string>
     <string name="action_locate">Update Location</string>
+    <string name="action_diag">Diagnose</string>
 
-    <string name="cancelSsl">Go Back</string>
-    <string name="contSsl">Continue</string>
+    <string name="goback">Go Back</string>
+    <string name="cont">Continue</string>
+    <string name="cancel">Cancel</string>
+    <string name="send">Send</string>
 
     <string name="notiRInit">eID Service: Reader initialization</string>
     <string name="notiRInitMsg">Your eID reader is being initialized</string>
@@ -47,6 +50,12 @@
     <string name="toastFailedLocate">Location not determined in a timely manner</string>
     <string name="toastDownlComplete">Download complete</string>
     <string name="toastDownlFailed">Download failed</string>
+    <string name="toastDiagNoDevices">Diagnose Failed! Ensure your reader is connected (and grant access to it).</string>
+    <string name="toastDiagNoCard">No card detected! Ensure your card is properly inserted and try again.</string>
+    <string name="toastDiagSuccess">Diagnose Succeeded! Good to go.</string>
+    <string name="toastNoMailClient">No mail client found, please install one (e.g. Email)</string>
+    <string name="toastNoDocMngr">No document manager found, please install one</string>
+    <string name="toastNoPdfViewer">No PDF viewer found, please install one (e.g google drive)</string>
 
     <string name="fragment_person">Person</string>
     <string name="fragment_address">Address</string>
@@ -54,6 +63,10 @@
     <string name="fragment_card">Card</string>
     <string name="fragment_identity">Identity</string>
     <string name="fragment_idandcard">Identity &amp; Card</string>
+
+    <string name="diagTitle">Diagnose</string>
+    <string name="diagStartMsg">Ensure your reader is connected and your eID is inserted.</string>
+    <string name="diagEndMsg">Incompatible readers/cards found.  Do you want to send the information to be investigated?</string>
 
     <string name="name">Name:</string>
     <string name="gNames">Given Names:</string>

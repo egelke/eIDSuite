@@ -20,6 +20,7 @@ package net.egelke.android.eid.view;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.app.PendingIntent;
+import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -226,7 +227,11 @@ public class SignActivity extends Activity {
                         intent.addCategory(Intent.CATEGORY_OPENABLE);
                         intent.setType("application/pdf");
                         intent.putExtra(Intent.EXTRA_TITLE, file.getText().toString());
-                        startActivityForResult(intent, WRITE_REQUEST_CODE);
+                        try {
+                            startActivityForResult(intent, WRITE_REQUEST_CODE);
+                        } catch (ActivityNotFoundException ex) {
+                                Toast.makeText(SignActivity.this, R.string.toastNoDocMngr, Toast.LENGTH_SHORT).show();
+                            }
                     }
                     return true;
                 default:
@@ -306,7 +311,11 @@ public class SignActivity extends Activity {
                 }
                 intent.setType("application/pdf");
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
-                startActivityForResult(intent, INPUT_REQUEST_CODE);
+                try {
+                    startActivityForResult(intent, INPUT_REQUEST_CODE);
+                } catch (ActivityNotFoundException ex) {
+                    Toast.makeText(SignActivity.this, R.string.toastNoDocMngr, Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
@@ -316,7 +325,11 @@ public class SignActivity extends Activity {
             public void onClick(View v) {
                 Intent intent = new Intent(Intent.ACTION_VIEW);
                 intent.setData(src);
-                startActivity(intent);
+                try {
+                    startActivity(intent);
+                } catch (ActivityNotFoundException ex) {
+                    Toast.makeText(SignActivity.this, R.string.toastNoPdfViewer, Toast.LENGTH_SHORT).show();
+                }
             }
         });
 

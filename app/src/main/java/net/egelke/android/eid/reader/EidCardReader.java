@@ -28,6 +28,7 @@ import net.egelke.android.eid.model.Address;
 import net.egelke.android.eid.model.Identity;
 import net.egelke.android.eid.usb.CCID;
 import net.egelke.android.eid.usb.CardCallback;
+import net.egelke.android.eid.usb.diagnostic.Device;
 
 import org.spongycastle.asn1.ASN1Encoding;
 import org.spongycastle.asn1.DERNull;
@@ -104,6 +105,16 @@ public class EidCardReader implements Closeable {
         FILES.put(FileId.ADDRESS_SIGN, new byte[]{0x00, (byte) 0xA4, 0x08, 0x0C, 0x06, 0x3F, 0x00, (byte) 0xDF, 0x01, 0x40, 0x34});
     }
 
+    public static boolean isEid(byte[] atr) {
+        if (atr == null || atr.length != ATR_PATTERN.length) return false;
+
+        int i = 0;
+        while (i < atr.length && (atr[i] & ATR_MASK[i]) == ATR_PATTERN[i])
+            i++;
+        return i >= atr.length;
+
+    }
+
     private CCID cardReader;
     private EidCardCallback eidCardCallback;
     private PinCallback pinCallback;
@@ -134,6 +145,28 @@ public class EidCardReader implements Closeable {
         this.cardReader = new CCID(manager, device);
         this.cardReader.setCallback(new CardReaderCallback());
 	}
+
+    public Diagnose diagnose() {
+        if (cardReader.isOpen()) throw new IllegalStateException("Can't open an open eid reader");
+
+
+        byte[] atr = null;
+        Device dDiag = cardReader.diagnose();
+        if (cardReader.isCCIDCompliant()) {
+            try {
+                cardReader.open();
+                try {
+                    atr = cardReader.powerOn();
+                } catch(Exception e) {
+                    //we are diagnosing, we that is ok
+                }
+                cardReader.close();
+            } catch (Exception e) {
+                //we are diagnosing, so we don't care much
+            }
+        }
+        return new Diagnose(dDiag, atr);
+    }
 
 	public synchronized void open() throws IOException {
         if (cardReader.isOpen()) {
@@ -178,14 +211,7 @@ public class EidCardReader implements Closeable {
     }
 
     private void processAtr(byte[] atr) {
-        if (atr.length == ATR_PATTERN.length) {
-            int i = 0;
-            while (i < atr.length && (atr[i] & ATR_MASK[i]) == ATR_PATTERN[i])
-                i++;
-            if (i >= atr.length) {
-                cardPresent = true;
-            }
-        }
+        cardPresent = isEid(atr);
     }
 	
 	@Override

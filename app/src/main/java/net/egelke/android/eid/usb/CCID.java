@@ -1,6 +1,6 @@
 /*
     This file is part of eID Suite.
-    Copyright (C) 2014 Egelke BVBA
+    Copyright (C) 2014-2015 Egelke BVBA
 
     eID Suite is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -25,8 +25,11 @@ import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
 import android.util.Log;
 
+import net.egelke.android.eid.usb.diagnostic.Device;
+
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -95,6 +98,10 @@ public class CCID implements Closeable {
         usbDevice = device;
     }
 
+    public boolean isCCIDCompliant() {
+        return CCID.isCCIDCompliant(usbDevice);
+    }
+
     public synchronized void open() throws IOException {
         if (usbDevice == null) throw new IllegalArgumentException("Device can't be null");
 
@@ -110,8 +117,6 @@ public class CCID implements Closeable {
         usbConnection = usbManager.openDevice(usbDevice);
         usbConnection.claimInterface(usbInterface, true);
         sequence = 0;
-
-        byte[] rawDescriptor = usbConnection.getRawDescriptors();
 
         //Get the interfaces
         for (int i = 0; i < usbInterface.getEndpointCount(); i++) {
@@ -174,6 +179,17 @@ public class CCID implements Closeable {
                 callback.removed();
             else if ((buffer[1] & (byte) 0x03) == (byte) 0x03)
                 callback.inserted();
+        }
+    }
+
+    public synchronized Device diagnose() {
+        if (usbConnection != null) throw new IllegalStateException("Can't diagnose an open CCID");
+
+        UsbDeviceConnection connection = usbManager.openDevice(usbDevice);
+        try {
+            return new Device(usbDevice, connection);
+        } finally {
+            connection.close();
         }
     }
 
