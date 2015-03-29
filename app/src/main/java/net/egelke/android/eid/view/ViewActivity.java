@@ -43,7 +43,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.Tracker;
+
 import net.egelke.android.eid.EidService;
+import net.egelke.android.eid.EidSuiteApp;
 import net.egelke.android.eid.R;
 import net.egelke.android.eid.belpic.FileId;
 import net.egelke.android.eid.model.Identity;
@@ -229,6 +233,10 @@ public class ViewActivity extends ActionBarActivity implements StartDiagDialog.L
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        Tracker t = ((EidSuiteApp) this.getApplication()).getTracker();
+        t.setScreenName("eID View");
+        t.send(new HitBuilders.ScreenViewBuilder().build());
 
         setContentView(R.layout.activity_view);
 

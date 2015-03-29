@@ -58,9 +58,12 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.Tracker;
 import com.itextpdf.text.pdf.PdfReader;
 
 import net.egelke.android.eid.EidService;
+import net.egelke.android.eid.EidSuiteApp;
 import net.egelke.android.eid.R;
 
 import java.io.File;
@@ -243,8 +246,12 @@ public class SignActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         getWindow().requestFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
-
         super.onCreate(savedInstanceState);
+
+        Tracker t = ((EidSuiteApp) this.getApplication()).getTracker();
+        t.setScreenName("eID Sign");
+        t.send(new HitBuilders.ScreenViewBuilder().build());
+
         setContentView(R.layout.activity_sign);
 
         bcReceiver = new BroadcastReceiver() {
@@ -338,31 +345,6 @@ public class SignActivity extends Activity {
             @Override
             public void onClick(View v) {
                 try {
-                    /*
-                    tmp = new File(getCacheDir().getAbsolutePath() + File.separator + "tmp.pdf");
-                    PdfReader reader = new PdfReader(getContentResolver().openInputStream(src));
-                    PdfStamper stamper = new PdfStamper(reader, new FileOutputStream(tmp));
-                    PdfFormField field1 = PdfFormField.createSignature(stamper.getWriter());
-                    field1.setFieldName("Aanbieder");
-                    field1.setWidget(new Rectangle(1.5f*72, 2.0f*72, 3.5f*72, 2.7f*72), PdfAnnotation.HIGHLIGHT_OUTLINE);
-                    field1.setFlags(PdfAnnotation.FLAGS_PRINT);
-                    stamper.addAnnotation(field1, 1);
-
-                    PdfFormField field2 = PdfFormField.createSignature(stamper.getWriter());
-                    field2.setFieldName("Verantwoordelijke");
-                    field2.setWidget(new Rectangle(5.0f*72, 2.0f*72, 7.0f*72, 2.7f*72), PdfAnnotation.HIGHLIGHT_OUTLINE);
-                    field1.setFlags(PdfAnnotation.FLAGS_PRINT);
-                    stamper.addAnnotation(field2, 1);
-
-                    stamper.close();
-
-                    Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-                    intent.addCategory(Intent.CATEGORY_OPENABLE);
-                    intent.setType("application/pdf");
-                    intent.putExtra(Intent.EXTRA_TITLE, "file1.pdf");
-                    startActivityForResult(intent, WRITE_REQUEST_CODE);
-                    */
-
                     setProgressBarIndeterminateVisibility(true);
                     final Message msg = Message.obtain(null, EidService.SIGN, 0, 0);
                     msg.getData().putParcelable("input", src);

@@ -7,8 +7,8 @@ android {
         applicationId "net.egelke.android.eid.suite"
         minSdkVersion 15
         targetSdkVersion 19
-        versionCode 2
-        versionName '1.1'
+        versionCode 3
+        versionName '1.2'
     }
     buildTypes {
         release {
@@ -27,6 +27,7 @@ android {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile 'com.android.support:appcompat-v7:21.0.2'
+    compile 'com.google.android.gms:play-services-analytics:7.0.0'
     compile 'com.madgag.spongycastle:prov:1.51.0.0'
     compile 'com.madgag.spongycastle:pkix:1.51.0.0'
     testCompile 'junit:junit:4.12'

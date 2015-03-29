@@ -53,7 +53,11 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
 
+import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.Tracker;
+
 import net.egelke.android.eid.EidService;
+import net.egelke.android.eid.EidSuiteApp;
 import net.egelke.android.eid.R;
 import net.egelke.android.eid.tls.EidSSLSocketFactory;
 
@@ -113,6 +117,10 @@ public class AuthActivity extends Activity {
         getWindow().requestFeature(Window.FEATURE_PROGRESS);
         getWindow().requestFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
         super.onCreate(savedInstanceState);
+
+        Tracker t = ((EidSuiteApp) this.getApplication()).getTracker();
+        t.setScreenName("eID Auth");
+        t.send(new HitBuilders.ScreenViewBuilder().build());
 
         webview = new WebView(this);
         webview.getSettings().setJavaScriptEnabled(true);

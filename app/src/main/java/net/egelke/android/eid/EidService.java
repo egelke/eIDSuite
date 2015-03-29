@@ -44,6 +44,8 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.Tracker;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.PdfSignatureAppearance;
@@ -508,6 +510,7 @@ public class EidService extends Service {
 
     private void diagnose(Message msg) throws RemoteException {
         boolean foundDevice = false;
+        boolean foundCCID = false;
         boolean foundCard = false;
         boolean foundEid = false;
         StringBuilder builder = new StringBuilder();
@@ -517,6 +520,11 @@ public class EidService extends Service {
         Iterator<UsbDevice> deviceIterator = deviceList.values().iterator();
         while (deviceIterator.hasNext()) {
             ccidDevice = deviceIterator.next();
+
+            Tracker t = ((EidSuiteApp) this.getApplication()).getTracker();
+            t.send(new HitBuilders.EventBuilder("Reader Action", "Diagnose")
+                    .setCustomDimension(1, getVendor())
+                    .setCustomDimension(2, getProduct()).build());
             try {
                 obtainUsbPermission();
                 Diagnose d = new EidCardReader(usbManager, ccidDevice).diagnose();
@@ -524,6 +532,7 @@ public class EidService extends Service {
                 builder.append(d.toString());
 
                 foundDevice = true;
+                if (CCID.isCCIDCompliant(ccidDevice))  foundCCID = true;
                 if (d.hasCard()) foundCard = true;
                 if (d.hasEid()) foundEid = true;
             } catch (Exception e) {
@@ -533,7 +542,7 @@ public class EidService extends Service {
             }
         }
 
-        Message rsp = Message.obtain(null, DIAG_RSP, foundDevice ? 0 : 1,  foundEid ? 0 : (foundCard ? 1 : 2));
+        Message rsp = Message.obtain(null, DIAG_RSP, foundDevice ? 0 : 1,  foundEid ? 0 : (foundCard ? 1 : (foundCCID ? 2 : 3)));
         rsp.getData().putString("Result", builder.toString());
         msg.replyTo.send(rsp);
     }
@@ -545,6 +554,11 @@ public class EidService extends Service {
                 .setContentText(EidService.this.getString(R.string.notiReadMsg))
                 .setCategory(Notification.CATEGORY_SERVICE);
         notifyMgr.notify(1, builder.build());
+        Tracker t = ((EidSuiteApp) this.getApplication()).getTracker();
+        t.send(new HitBuilders.EventBuilder("eID Action", "Read Data")
+                .setCustomDimension(1, getVendor())
+                .setCustomDimension(2, getProduct()).build());
+
         for (FileId fileId : FileId.values()) {
             if (msg.getData().size() == 0 || msg.getData().getBoolean(fileId.name(), false)) {
                 byte[] bytes = eidCardReader.readFileRaw(fileId);
@@ -570,6 +584,10 @@ public class EidService extends Service {
                 .setContentText(EidService.this.getString(R.string.notiVerifyMsg))
                 .setCategory(Notification.CATEGORY_SERVICE);
         notifyMgr.notify(1, builder.build());
+        Tracker t = ((EidSuiteApp) this.getApplication()).getTracker();
+        t.send(new HitBuilders.EventBuilder("eID Action", "Verify PIN")
+                .setCustomDimension(1, getVendor())
+                .setCustomDimension(2, getProduct()).build());
 
         try {
             eidCardReader.verifyPin();
@@ -604,6 +622,10 @@ public class EidService extends Service {
                 .setContentText(EidService.this.getString(R.string.notiAuthyMsg))
                 .setCategory(Notification.CATEGORY_SERVICE);
         notifyMgr.notify(1, builder.build());
+        Tracker t = ((EidSuiteApp) this.getApplication()).getTracker();
+        t.send(new HitBuilders.EventBuilder("eID Action", "Authenticate")
+                .setCustomDimension(1, getVendor())
+                .setCustomDimension(2, getProduct()).build());
 
         byte[] hash = msg.getData().getByteArray("Hash");
         EidCardReader.DigestAlg digestAlg = EidCardReader.DigestAlg.valueOf(msg.getData().getString("DigestAlg", "SHA1"));
@@ -636,6 +658,10 @@ public class EidService extends Service {
                 .setContentText(EidService.this.getString(R.string.notiSignMsg))
                 .setCategory(Notification.CATEGORY_SERVICE);
         notifyMgr.notify(1, builder.build());
+        Tracker t = ((EidSuiteApp) this.getApplication()).getTracker();
+        t.send(new HitBuilders.EventBuilder("eID Action", "Sign")
+                .setCustomDimension(1, getVendor())
+                .setCustomDimension(2, getProduct()).build());
 
         Uri uri = msg.getData().getParcelable("input");
         String reason = msg.getData().getString("reason");
@@ -699,6 +725,18 @@ public class EidService extends Service {
             rsp.getData().putString("output", tmp.getAbsolutePath());
             msg.replyTo.send(rsp);
         }
+    }
+
+    private String getVendor() {
+        if (ccidDevice == null) return "unknown";
+
+        return String.format("%X", ccidDevice.getVendorId());
+    }
+
+    private String getProduct() {
+        if (ccidDevice == null) return "unknown";
+
+        return String.format("%X", ccidDevice.getProductId());
     }
 
     private String getProductName(UsbDevice device) {
