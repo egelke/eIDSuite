@@ -132,8 +132,6 @@ public class EidService extends Service {
                 return;
             }
 
-
-
             NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                     .setSmallIcon(R.drawable.ic_stat_card)
                     .setContentTitle(EidService.this.getText(R.string.notiRInit))
@@ -199,6 +197,11 @@ public class EidService extends Service {
                     }
                 });
             } finally {
+                if (detachReceiver != null) {
+                    unregisterReceiver(detachReceiver);
+                    detachReceiver = null;
+                }
+
                 wl.release();
                 stopForeground(true);
             }
@@ -244,6 +247,7 @@ public class EidService extends Service {
     private Thread messageThread;
 
     //temporally properties
+    private BroadcastReceiver detachReceiver;
     private UsbDevice ccidDevice;
     private EidCardReader eidCardReader;
     private Object wait;
@@ -305,6 +309,8 @@ public class EidService extends Service {
 
     private void obtainUsbDevice() {
         ccidDevice = null;
+        detachReceiver = null;
+
         Map<String, UsbDevice> deviceList = usbManager.getDeviceList();
         Iterator<UsbDevice> deviceIterator = deviceList.values().iterator();
         while (ccidDevice == null && deviceIterator.hasNext()) {
@@ -368,9 +374,24 @@ public class EidService extends Service {
 
             unregisterReceiver(attachReceiver);
             if (ccidDevice == null) throw new IllegalStateException("No reader connected");
-
-            //TODO:Listen to detach.
         }
+
+        //Listen to detach
+        detachReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+                if (device.getDeviceName().equals(ccidDevice.getDeviceName())) {
+                    //end the ongoing wait
+                    if (wait != null) {
+                        synchronized (wait) {
+                            wait.notify();
+                        }
+                    }
+                }
+            }
+        };
+        registerReceiver(detachReceiver, new IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED), null, broadcast);
     }
 
     public void obtainUsbPermission() {
