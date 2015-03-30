@@ -43,6 +43,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.provider.OpenableColumns;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -60,6 +61,8 @@ import android.widget.Toast;
 
 import com.google.android.gms.analytics.HitBuilders;
 import com.google.android.gms.analytics.Tracker;
+import com.itextpdf.text.pdf.AcroFields;
+import com.itextpdf.text.pdf.PdfDictionary;
 import com.itextpdf.text.pdf.PdfReader;
 
 import net.egelke.android.eid.EidService;
@@ -71,6 +74,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -86,6 +90,24 @@ public class SignActivity extends Activity {
     private static final int WRITE_REQUEST_CODE = 2;
 
     private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+    //TODO:change into viewmodel
+    private static class SignatureField {
+        String name;
+        List<String> pages;
+        String label;
+
+        SignatureField(String name, List<String> pages, String label) {
+            this.name = name;
+            this.pages = pages;
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
 
     private class CopyFile extends AsyncTask<Uri, Void, Void> {
 
@@ -153,14 +175,27 @@ public class SignActivity extends Activity {
         }
     }
 
-    private class Parse extends AsyncTask<Void, Void, List<String>> {
+    private class Parse extends AsyncTask<Void, Void, List<SignatureField>> {
 
         @Override
-        protected List<String> doInBackground(Void... params) {
+        protected List<SignatureField> doInBackground(Void... params) {
             try {
                 PdfReader reader = new PdfReader(getContentResolver().openInputStream(src));
                 try {
-                    return reader.getAcroFields().getBlankSignatureNames();
+                    AcroFields acroFields = reader.getAcroFields();
+                    List<String> names = acroFields.getBlankSignatureNames();
+
+                    List<SignatureField> fields = new LinkedList<SignatureField>();
+                    for(String name : names) {
+                        List<String> pages = new LinkedList<String>();
+                        for(AcroFields.FieldPosition fp : acroFields.getFieldPositions(name)) {
+                            pages.add(Integer.toString(fp.page));
+                        }
+                        fields.add(new SignatureField(name, pages,
+                                String.format(getString(R.string.signField), name, TextUtils.join(", ", pages))));
+                    }
+
+                    return fields;
                 } finally {
                     reader.close();
                 }
@@ -171,14 +206,14 @@ public class SignActivity extends Activity {
         }
 
         @Override
-        protected void onPostExecute(List<String> strings) {
-            signInv.setChecked(strings.isEmpty());
-            signInv.setEnabled(!strings.isEmpty());
-            ArrayAdapter<String> adapter = new ArrayAdapter<String>(SignActivity.this,
-                    android.R.layout.simple_list_item_single_choice, strings);
+        protected void onPostExecute(List<SignatureField> values) {
+            signInv.setChecked(values.isEmpty());
+            signInv.setEnabled(!values.isEmpty());
+            ArrayAdapter<SignatureField> adapter = new ArrayAdapter<SignatureField>(SignActivity.this,
+                    android.R.layout.simple_list_item_single_choice, values);
             signNames.setAdapter(adapter);
-            signNames.setEnabled(!strings.isEmpty());
-            if (!strings.isEmpty())
+            signNames.setEnabled(!values.isEmpty());
+            if (!values.isEmpty())
                 signNames.setItemChecked(0, true);
             setProgressBarIndeterminateVisibility(false);
         }
@@ -351,7 +386,8 @@ public class SignActivity extends Activity {
                     msg.getData().putString("reason", (String)reason.getSelectedItem());
                     msg.getData().putString("location", location.getText().toString());
                     if (!signInv.isChecked())
-                        msg.getData().putString("sign", (String) signNames.getItemAtPosition(signNames.getCheckedItemPosition()));
+                        msg.getData().putString("sign",
+                                ((SignatureField) signNames.getItemAtPosition(signNames.getCheckedItemPosition())).name);
                     msg.replyTo = mEidServiceResponse;
                     mEidService.send(msg);
                 } catch (Exception e) {
@@ -364,7 +400,6 @@ public class SignActivity extends Activity {
         location = (EditText) findViewById(R.id.location);
 
         if (locationProvider != null) (new Locate(false)).execute(locationManager.getLastKnownLocation(locationProvider));
-        //locationManager.requestSingleUpdate(locationProvider, PendingIntent.getBroadcast(SignActivity.this, 0, new Intent(ACTION_LOCATED), 0));
     }
 
 

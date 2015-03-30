@@ -92,14 +92,15 @@
     <string name="validTo">Valid until:</string>
 
     <string name="usage">Usages:</string>
-    <string name="pinRetries">%1$d retries left</string>
+    <string name="pinRetries">%1$d remaining retries</string>
     <string name="usePinPad">Please enter your PIN on the reader.</string>
 
     <string name="selectFile">Select a file</string>
     <string name="reason">Reason</string>
     <string name="location">Location</string>
-    <string name="signFields">Signature Fields</string>
+    <string name="signFields">Field to sign</string>
     <string name="invSign">Invisible Signature</string>
+    <string name="signField">\"%1$s\" on page %2$s</string>
     <string name="select">Select</string>
     <string name="view">View</string>
     <string name="sign">Sign</string>
