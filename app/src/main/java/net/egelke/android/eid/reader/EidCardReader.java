@@ -67,10 +67,12 @@ public class EidCardReader implements Closeable {
         OK,
         OkGetRsp,
         VerifyFail,
+        MemoryUnchanged,
+        CommandTimeout,
         SecConNotSatisfied,
         AuthBlocked,
         WrongParamP1P2,
-        BadLengthLeCorrectIsXX
+        BadLengthLeCorrectIsXX,
     }
 
     private static final Map<FileId, byte[]> FILES;
@@ -81,10 +83,6 @@ public class EidCardReader implements Closeable {
     private static final byte[] INIT_SIGN_NONREP_RAWPKCS1 = {0x00, 0x22, 0x41, (byte)0xB6, 0x05, //ISO/IEC 7816 header, data below
             0x04, (byte)0x80, 0x01 /*RSA-SSA with prepared EMSA*/, (byte) 0x84, (byte) 0x83 /*NON REPUDIATION KEY*/};
     private static final byte[] DO_SIGN = {0x00, 0x2A, (byte) 0x9E, (byte) 0x9A, 0x00};
-    //private static final byte[] DO_SIGN_EMSA_SHA1 = {0x00, 0x2A, (byte) 0x9E, (byte) 0x9A, 0x00, //ISO/IEC 7816 header, data below
-    //        0x30, 0x00, 0x30, 0x07, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x04, 0x00};
-    //private static final byte[] DO_SIGN_EMSA_SHA256 = {0x00, 0x2A, (byte) 0x9E, (byte) 0x9A, 0x00, //ISO/IEC 7816 header, data below
-    //        0x30, 0x00, 0x30, 0x0b, 0x06, 0x09, 0x60, (byte) 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x04, 0x00};
     private static final byte[] VERIFY_PIN = {0x00, 0x20, 0x00, 0x01, 0x08, //ISO/IEC 7816 header, data below
             0x20, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
 
@@ -183,6 +181,7 @@ public class EidCardReader implements Closeable {
         }
         try {
             processAtr(cardReader.powerOn());
+            //cardReader.init();
         } catch (IOException io) {
             Log.d(TAG, "Failed power on after open");
         }
@@ -195,6 +194,7 @@ public class EidCardReader implements Closeable {
         public void inserted() {
             try {
                 processAtr(cardReader.powerOn());
+                //cardReader.init();
                 if (cardPresent && eidCardCallback != null) eidCardCallback.inserted();
             } catch (IOException io) {
                 Log.d(TAG, "Failed to handle card insert", io);
@@ -223,8 +223,8 @@ public class EidCardReader implements Closeable {
         if (cardPresent) {
             try {
                 cardReader.powerOff();
-            } catch (UnsupportedOperationException uoe) {
-                Log.d(TAG, "EidCardReader can't power down the card");
+            } catch (Exception e) {
+                Log.d(TAG, "EidCardReader can't power down the card", e);
             }
             cardPresent = false;
         }
@@ -348,33 +348,40 @@ public class EidCardReader implements Closeable {
     public void verifyPin() throws IOException, UserCancelException {
         int retries = -1;
         while (true) {
-            char[] pin = pinCallback.getPin(retries);
-            byte[] cmd = Arrays.copyOf(VERIFY_PIN, VERIFY_PIN.length);
-            cmd[5] = (byte) (cmd[5] | pin.length);
-            for (int idx = 0; idx < pin.length; idx += 2) {
-                byte digit1 = (byte) ((pin[idx] - '0') << 4);
-                byte digit2 = idx + 1 < pin.length ? (byte) (pin[idx + 1] - '0') : 0x0F;
-                cmd[idx / 2 + 6] = (byte) (digit1 | digit2);
-            }
-
-            //Erase pin from memory
-            Arrays.fill(pin, (char) 0);
-            try {
-                byte[] rsp = cardReader.transmitApdu(cmd);
-                switch (validateResponse(rsp)) {
-                    case OK:
-                        return;
-                    case VerifyFail:
-                        retries = rsp[1] & 0x0F;
-                        break;
-                    case AuthBlocked:
-                        throw new CardBlockedException("The key on the card is blocked (to many tries)");
-                    default:
-                        throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
+            byte[] rsp;
+            if (cardReader.hasPinPad()) {
+                rsp = cardReader.transmitApduWithPin(VERIFY_PIN);
+            } else {
+                char[] pin = pinCallback.getPin(retries);
+                byte[] cmd = Arrays.copyOf(VERIFY_PIN, VERIFY_PIN.length);
+                cmd[5] = (byte) (cmd[5] | pin.length);
+                for (int idx = 0; idx < pin.length; idx += 2) {
+                    byte digit1 = (byte) ((pin[idx] - '0') << 4);
+                    byte digit2 = idx + 1 < pin.length ? (byte) (pin[idx + 1] - '0') : 0x0F;
+                    cmd[idx / 2 + 6] = (byte) (digit1 | digit2);
                 }
-            } finally {
                 //Erase pin from memory
-                Arrays.fill(cmd, (byte) 0);
+                Arrays.fill(pin, (char) 0);
+                try {
+                    rsp = cardReader.transmitApdu(cmd);
+                } finally {
+                    Arrays.fill(cmd, (byte) 0);
+                }
+            }
+            switch (validateResponse(rsp)) {
+                case OK:
+                    return;
+                case VerifyFail:
+                    retries = rsp[1] & 0x0F;
+                    break;
+                case MemoryUnchanged:
+                    throw new UserCancelException("PIN Timeout");
+                case CommandTimeout:
+                    throw new UserCancelException("User canceled PIN entry");
+                case AuthBlocked:
+                    throw new CardBlockedException("The key on the card is blocked (to many tries)");
+                default:
+                    throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
             }
         }
     }
@@ -446,6 +453,12 @@ public class EidCardReader implements Closeable {
         } else if (rsp[rsp.length - 2] ==((byte)0x63) && (rsp[rsp.length - 1] & 0xF0) == 0xC0) {
             Log.i(TAG, String.format("Verify fail, %X tries left.", rsp[1] & 0x0F));
             return ApduSwCode.VerifyFail;
+        } else if (rsp[rsp.length - 2] == ((byte)0x64) && (rsp[rsp.length -1] == 0x00)) {
+            Log.i(TAG, "Memory Unchanged");
+            return ApduSwCode.MemoryUnchanged;
+        } else if (rsp[rsp.length - 2] == ((byte)0x64) && (rsp[rsp.length -1] == 0x01)) {
+            Log.i(TAG, "Command timeout");
+            return ApduSwCode.CommandTimeout;
         } else if (rsp[rsp.length - 2] == ((byte) 0x69) && rsp[rsp.length - 1] == ((byte)0x82)) {
             Log.w(TAG, "Security condition not satisfied");
             return ApduSwCode.SecConNotSatisfied;

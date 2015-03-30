@@ -195,7 +195,7 @@ public class CCID {
     public String toString() {
         return String.format("CCID: Version=%X, NumSlot=%d, Voltages=%s, Protocols=%s, " +
                         "DefaultClock=%dKHz, MaxClock=%dKHz, NumClockSupported=%d, " +
-                        "DefaultDataRate=%dbps, MaxDataRate=%dpbs, NumDataRatesSupported=%d," +
+                        "DefaultDataRate=%dbps, MaxDataRate=%dpbs, NumDataRatesSupported=%d, " +
                         "MaxIFSD=%d, Mechanicals=%s, Features=%s, MaxCCIDMessageLength=%d, " +
                         "ClassGetResponse=%X, classEnvelope=%X, lcdLayout=%dx%d, " +
                         "PIN Support=%s, MaxCCIDBusySlots=%d",
@@ -204,5 +204,9 @@ public class CCID {
                 maxIFSD, mechanicals, features, maxCCIDMessageLength, classGetResponse,
                 classEnvelope, lcdLayout.charsPerLine, lcdLayout.lines, pinSupports,
                 maxCCIDBusySlots);
+    }
+
+    public EnumSet<PINSupport> getPinSupports() {
+        return pinSupports;
     }
 }

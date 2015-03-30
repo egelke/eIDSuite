@@ -367,6 +367,8 @@ public class EidService extends Service {
 
             unregisterReceiver(attachReceiver);
             if (ccidDevice == null) throw new IllegalStateException("No reader connected");
+
+            //TODO:Listen to detach.
         }
     }
 
