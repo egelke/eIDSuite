@@ -73,12 +73,14 @@
         <activity
             android:name=".view.PinActivity"
             android:label="@string/title_activity_pin"
-            android:theme="@style/AppDialogTheme">
+            android:theme="@style/AppDialogTheme"
+            android:taskAffinity="net.egelke.android.eid.view.PinActivity">
         </activity>
         <activity
             android:name=".view.PinPadActivity"
             android:label="@string/title_activity_pinpad"
-            android:theme="@style/AppDialogTheme">
+            android:theme="@style/AppDialogTheme"
+            android:taskAffinity="net.egelke.android.eid.view.PinActivity">
         </activity>
 
         <service android:name=".EidService" >
