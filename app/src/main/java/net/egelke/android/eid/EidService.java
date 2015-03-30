@@ -62,7 +62,7 @@ import com.itextpdf.text.pdf.security.TSAClient;
 import com.itextpdf.text.pdf.security.TSAClientBouncyCastle;
 
 import net.egelke.android.eid.belpic.FileId;
-import net.egelke.android.eid.reader.Diagnose;
+import net.egelke.android.eid.diagnostic.DeviceDescriptor;
 import net.egelke.android.eid.reader.EidCardCallback;
 import net.egelke.android.eid.reader.EidCardReader;
 import net.egelke.android.eid.reader.PinCallback;
@@ -564,14 +564,14 @@ public class EidService extends Service {
                     .setCustomDimension(2, getProduct()).build());
             try {
                 obtainUsbPermission();
-                Diagnose d = new EidCardReader(usbManager, ccidDevice).diagnose();
+                DeviceDescriptor dd = new DeviceDescriptor(usbManager, ccidDevice);
                 builder.append("\r\n\r\n");
-                builder.append(d.toString());
+                builder.append(dd.toString());
 
                 foundDevice = true;
-                if (CCID.isCCIDCompliant(ccidDevice))  foundCCID = true;
-                if (d.hasCard()) foundCard = true;
-                if (d.hasEid()) foundEid = true;
+                if (dd.hasCCID())  foundCCID = true;
+                if (dd.hasCard()) foundCard = true;
+                if (dd.hasEid()) foundEid = true;
             } catch (Exception e) {
                 Log.w(TAG, "Failed to diagnose device", e);
             } finally {

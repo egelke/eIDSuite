@@ -25,12 +25,12 @@ import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
 import android.util.Log;
 
-import net.egelke.android.eid.usb.diagnostic.Device;
+import net.egelke.android.eid.diagnostic.CCIDDescriptor;
+import net.egelke.android.eid.diagnostic.DeviceDescriptor;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -47,8 +47,8 @@ public class CCID implements Closeable {
     }
 
     public static class Response {
-        byte param;
-        byte[] data;
+        public byte param;
+        public byte[] data;
     }
 
     public static boolean isCCIDCompliant(UsbDevice usbDevice) {
@@ -67,10 +67,10 @@ public class CCID implements Closeable {
     //Input property
     private UsbDevice usbDevice;
     private UsbManager usbManager;
+    private UsbInterface usbInterface;
 
     //connection
     private boolean pinPad;
-    private UsbInterface usbInterface;
     private UsbDeviceConnection usbConnection;
 
     //USB streams
@@ -103,10 +103,15 @@ public class CCID implements Closeable {
         return pinPad;
     }
 
-    public CCID(UsbManager manager, final UsbDevice device)
+    public CCID(UsbManager usbManager, UsbDevice usbDevice)
     {
-        usbManager = manager;
-        usbDevice = device;
+        this.usbManager = usbManager;
+        this.usbDevice = usbDevice;
+    }
+
+    public CCID(UsbManager usbManager, UsbDevice usbDevice, UsbInterface usbInterface) {
+        this(usbManager, usbDevice);
+        this.usbInterface = usbInterface;
     }
 
     public boolean isCCIDCompliant() {
@@ -116,14 +121,16 @@ public class CCID implements Closeable {
     public synchronized void open() throws IOException {
         if (usbDevice == null) throw new IllegalArgumentException("Device can't be null");
 
-        for (int i = 0; i < usbDevice.getInterfaceCount(); i++) {
-            UsbInterface usbIf = usbDevice.getInterface(i);
-            if (usbIf.getInterfaceClass() == UsbConstants.USB_CLASS_CSCID) {
-                usbInterface = usbIf;
+        if (usbInterface == null) {
+            for (int i = 0; i < usbDevice.getInterfaceCount(); i++) {
+                UsbInterface usbIf = usbDevice.getInterface(i);
+                if (usbIf.getInterfaceClass() == UsbConstants.USB_CLASS_CSCID) {
+                    usbInterface = usbIf;
+                }
             }
+            if (usbInterface == null)
+                throw new IllegalStateException("The device hasn't a smart card reader");
         }
-        if (usbInterface == null)
-            throw new IllegalStateException("The device hasn't a smart card reader");
 
         usbConnection = usbManager.openDevice(usbDevice);
         usbConnection.claimInterface(usbInterface, true);
@@ -144,10 +151,10 @@ public class CCID implements Closeable {
         }
 
         //check for pinPad
-        List<net.egelke.android.eid.usb.diagnostic.CCID> diags =
-            net.egelke.android.eid.usb.diagnostic.CCID.Parse(usbConnection.getRawDescriptors());
-        if (diags.size() == 1) {
-            pinPad = diags.get(0).getPinSupports().contains(net.egelke.android.eid.usb.diagnostic.CCID.PINSupport.Verification);
+        List<CCIDDescriptor> desc =
+            CCIDDescriptor.Parse(usbConnection.getRawDescriptors());
+        if (desc.size() == 1) {
+            pinPad = desc.get(0).getPinSupports().contains(CCIDDescriptor.PINSupport.Verification);
         } else {
             pinPad = false;
         }
@@ -202,17 +209,6 @@ public class CCID implements Closeable {
         }
     }
 
-    public synchronized Device diagnose() {
-        if (usbConnection != null) throw new IllegalStateException("Can't diagnose an open CCID");
-
-        UsbDeviceConnection connection = usbManager.openDevice(usbDevice);
-        try {
-            return new Device(usbDevice, connection);
-        } finally {
-            connection.close();
-        }
-    }
-
     public synchronized byte[] powerOn() throws IOException {
         return transmit((byte) 0x62/*IccPowerOn*/, null, (byte)0x80/*DataBlock*/, false).data;
     }
@@ -259,7 +255,7 @@ public class CCID implements Closeable {
         return transmit((byte) 0x69 /*Secure*/, pvds, (byte)0x80, true).data;
     }
 
-    private Response transmit(byte cmd, byte[] data, byte rtn, boolean waitIcc) throws IOException {
+    public Response transmit(byte cmd, byte[] data, byte rtn, boolean waitIcc) throws IOException {
         sequence = (sequence + 1) % 0xFF;
         byte[] req = new byte[(data == null ? 0 : data.length) + 10];
         req[0] = cmd;
@@ -328,7 +324,7 @@ public class CCID implements Closeable {
 
         if (rsp[0] != type) {
             Log.w(TAG, String.format("Unexpected CCID reader response: %X (should be %X)", rsp[0], type ));
-            throw new IOException("Illegal CCID reader response (wrong type)");
+            throw new IOException(String.format("Illegal CCID reader response (wrong type: %X)", rsp[0]));
         }
         if ((rsp[7] & (byte)0x03) == 0x01 && rsp[8] == 0x00) {
             throw new UnsupportedOperationException("Command not supported by the reader");

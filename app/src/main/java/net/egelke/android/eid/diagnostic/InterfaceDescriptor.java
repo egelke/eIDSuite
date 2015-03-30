@@ -15,33 +15,23 @@
     You should have received a copy of the GNU Affero General Public License
     along with eID Suite.  If not, see <http://www.gnu.org/licenses/>.
 */
-package net.egelke.android.eid.reader;
+package net.egelke.android.eid.diagnostic;
 
-import net.egelke.android.eid.usb.diagnostic.Device;
 
-import org.spongycastle.util.encoders.Hex;
+import android.hardware.usb.UsbInterface;
 
-public class Diagnose {
+public class InterfaceDescriptor {
 
-    private Device device;
-    private byte[] atr;
+    private UsbInterface i;
 
-    public Diagnose(Device device, byte[] atr) {
-        this.device = device;
-        this.atr = atr;
-    }
-
-    public boolean hasCard() { return atr != null; }
-    public boolean hasEid() {
-        return EidCardReader.isEid(atr);
+    public InterfaceDescriptor(UsbInterface i) {
+        this.i = i;
     }
 
     @Override
     public String toString() {
-        if (atr == null) {
-            return device.toString();
-        } else {
-            return String.format("%s\r\nATR: %s", device.toString(), Hex.toHexString(atr));
-        }
+        return String.format("Interface: Id=%d, Class=%X, Subclass=%X, Protocol=%X",
+                i.getId(), i.getInterfaceClass(), i.getInterfaceSubclass(), i.getInterfaceProtocol());
     }
+
 }

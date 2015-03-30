@@ -28,12 +28,10 @@ import net.egelke.android.eid.model.Address;
 import net.egelke.android.eid.model.Identity;
 import net.egelke.android.eid.usb.CCID;
 import net.egelke.android.eid.usb.CardCallback;
-import net.egelke.android.eid.usb.diagnostic.Device;
 
 import org.spongycastle.asn1.ASN1Encoding;
 import org.spongycastle.asn1.DERNull;
 import org.spongycastle.asn1.nist.NISTObjectIdentifiers;
-import org.spongycastle.asn1.oiw.OIWObjectIdentifiers;
 import org.spongycastle.asn1.x509.AlgorithmIdentifier;
 import org.spongycastle.asn1.x509.DigestInfo;
 import org.spongycastle.asn1.x509.X509ObjectIdentifiers;
@@ -143,28 +141,6 @@ public class EidCardReader implements Closeable {
         this.cardReader = new CCID(manager, device);
         this.cardReader.setCallback(new CardReaderCallback());
 	}
-
-    public Diagnose diagnose() {
-        if (cardReader.isOpen()) throw new IllegalStateException("Can't open an open eid reader");
-
-
-        byte[] atr = null;
-        Device dDiag = cardReader.diagnose();
-        if (cardReader.isCCIDCompliant()) {
-            try {
-                cardReader.open();
-                try {
-                    atr = cardReader.powerOn();
-                } catch(Exception e) {
-                    //we are diagnosing, we that is ok
-                }
-                cardReader.close();
-            } catch (Exception e) {
-                //we are diagnosing, so we don't care much
-            }
-        }
-        return new Diagnose(dDiag, atr);
-    }
 
 	public synchronized void open() throws IOException {
         if (cardReader.isOpen()) {
