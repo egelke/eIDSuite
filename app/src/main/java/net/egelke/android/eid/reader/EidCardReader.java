@@ -350,7 +350,12 @@ public class EidCardReader implements Closeable {
         while (true) {
             byte[] rsp;
             if (cardReader.hasPinPad()) {
-                rsp = cardReader.transmitApduWithPin(VERIFY_PIN);
+                pinCallback.pinPadStart(retries);
+                try {
+                    rsp = cardReader.transmitApduWithPin(VERIFY_PIN);
+                } finally {
+                    pinCallback.pinPadEnd();
+                }
             } else {
                 char[] pin = pinCallback.getPin(retries);
                 byte[] cmd = Arrays.copyOf(VERIFY_PIN, VERIFY_PIN.length);

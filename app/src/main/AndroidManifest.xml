@@ -75,6 +75,11 @@
             android:label="@string/title_activity_pin"
             android:theme="@style/AppDialogTheme">
         </activity>
+        <activity
+            android:name=".view.PinPadActivity"
+            android:label="@string/title_activity_pinpad"
+            android:theme="@style/AppDialogTheme">
+        </activity>
 
         <service android:name=".EidService" >
         </service>

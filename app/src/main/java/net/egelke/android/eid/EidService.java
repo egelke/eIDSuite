@@ -68,6 +68,7 @@ import net.egelke.android.eid.reader.EidCardReader;
 import net.egelke.android.eid.reader.PinCallback;
 import net.egelke.android.eid.usb.CCID;
 import net.egelke.android.eid.view.PinActivity;
+import net.egelke.android.eid.view.PinPadActivity;
 
 import org.spongycastle.jce.provider.BouncyCastleProvider;
 
@@ -447,6 +448,19 @@ public class EidService extends Service {
                 } finally {
                     pin = null;
                 }
+            }
+
+            @Override
+            public void pinPadStart(int retries) {
+                Intent dialogIntent = new Intent(getBaseContext(), PinPadActivity.class);
+                dialogIntent.putExtra(PinPadActivity.EXTRA_RETRIES, retries);
+                dialogIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getApplication().startActivity(dialogIntent);
+            }
+
+            @Override
+            public void pinPadEnd() {
+                sendBroadcast(new Intent(PinPadActivity.ACTION_PINPAD_END));
             }
         });
     }

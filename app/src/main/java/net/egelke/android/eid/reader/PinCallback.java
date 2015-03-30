@@ -28,4 +28,7 @@ public interface PinCallback {
      * @return The PIN as chars ('0', '1', ...)
      */
     char[] getPin(int retries) throws UserCancelException;
+
+    void pinPadStart(int retries);
+    void pinPadEnd();
 }

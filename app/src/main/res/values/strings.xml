@@ -6,6 +6,7 @@
     <string name="title_activity_sign">eID Signer</string>
     <string name="title_activity_auth">eID Authenticator</string>
     <string name="title_activity_pin">PIN</string>
+    <string name="title_activity_pinpad">PIN on reader</string>
 
     <string name="action_settings">Settings</string>
     <string name="action_card">Card</string>
@@ -91,6 +92,8 @@
     <string name="validTo">Valid until:</string>
 
     <string name="usage">Usages:</string>
+    <string name="pinRetries">%1$d retries left</string>
+    <string name="usePinPad">Please enter your PIN on the reader.</string>
 
     <string name="selectFile">Select a file</string>
     <string name="reason">Reason</string>

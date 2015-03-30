@@ -57,7 +57,7 @@ public class PinActivity extends Activity {
 
         TextView retriesLeft = (TextView) findViewById(R.id.retries);
         if (retries >= 0) {
-            retriesLeft.setText("Remaining retries left: " + retries);
+            retriesLeft.setText(String.format(this.getString(R.string.pinRetries), retries));
         } else {
             retriesLeft.setText("");
         }
