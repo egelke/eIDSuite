@@ -36,6 +36,10 @@ public class Certificate {
     private X509Certificate cert;
     private Context ctx;
 
+    public Certificate() {
+
+    }
+
     public Certificate(Context ctx, X509Certificate cert) {
         this.ctx = ctx;
         this.cert = cert;

@@ -1,6 +1,6 @@
 /*
     This file is part of eID Suite.
-    Copyright (C) 2014-2015 Egelke BVBA
+    Copyright (C) 2015 Egelke BVBA
 
     eID Suite is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -19,30 +19,23 @@ package net.egelke.android.eid.viewmodel;
 
 
 import android.content.Context;
+import android.graphics.drawable.Drawable;
 
-public class Address {
+import java.io.ByteArrayInputStream;
 
-    private Context ctx;
-    private net.egelke.android.eid.model.Address address;
+public class Photo {
 
-    public Address() {
+    private byte[] data;
+
+    public Photo() {
 
     }
 
-    public Address(Context ctx, net.egelke.android.eid.model.Address address) {
-        this.ctx = ctx;
-        this.address = address;
+    public Photo(Context ctx, byte[] data) {
+        this.data = data;
     }
 
-    public String getStreet() {
-        return address != null ? address.streetAndNumber : "";
-    }
-
-    public String getZip() {
-        return address != null ? address.zip : "";
-    }
-
-    public String getMunicipality() {
-        return address != null ? address.municipality : "";
+    public Drawable getDrawable() {
+        return data != null ? Drawable.createFromStream(new ByteArrayInputStream(data), "idPic") : null;
     }
 }

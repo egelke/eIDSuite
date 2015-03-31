@@ -29,6 +29,10 @@ public class Person {
     private Identity id;
     private Context ctx;
 
+    public Person() {
+
+    }
+
     public Person(Context ctx, Identity id) {
         this.ctx = ctx;
         this.id = id;

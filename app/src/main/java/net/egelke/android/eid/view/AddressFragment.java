@@ -73,6 +73,7 @@ public class AddressFragment extends Fragment implements UpdateListener {
     @Override
     public void startUpdate(String key) {
         if (Address.class.getName().equals(key)) {
+
             data.setVisibility(View.GONE);
             loading.setVisibility(View.VISIBLE);
         }

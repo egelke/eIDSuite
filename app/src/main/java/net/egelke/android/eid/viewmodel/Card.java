@@ -26,6 +26,10 @@ public class Card {
     private Identity id;
     private Context ctx;
 
+    public Card() {
+
+    }
+
     public Card(Context ctx, Identity id) {
         this.ctx = ctx;
         this.id = id;

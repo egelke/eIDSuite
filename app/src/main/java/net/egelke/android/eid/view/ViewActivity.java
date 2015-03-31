@@ -54,6 +54,7 @@ import net.egelke.android.eid.model.Identity;
 import net.egelke.android.eid.viewmodel.Address;
 import net.egelke.android.eid.viewmodel.Card;
 import net.egelke.android.eid.viewmodel.Person;
+import net.egelke.android.eid.viewmodel.Photo;
 import net.egelke.android.eid.viewmodel.ViewModel;
 
 import java.io.ByteArrayInputStream;
@@ -184,16 +185,16 @@ public class ViewActivity extends ActionBarActivity implements StartDiagDialog.L
                     switch (file) {
                         case IDENTITY:
                             Identity id = msg.getData().getParcelable(FileId.IDENTITY.name());
-                            ViewModel.setData(Person.class.getName(), new Person(getApplicationContext(), id));
-                            ViewModel.setData(Card.class.getName(), new Card(getApplicationContext(), id));
+                            ViewModel.setData(new Person(getApplicationContext(), id));
+                            ViewModel.setData(new Card(getApplicationContext(), id));
                             return true;
                         case ADDRESS:
                             net.egelke.android.eid.model.Address address = msg.getData().getParcelable(FileId.ADDRESS.name());
-                            ViewModel.setData(Address.class.getName(), new Address(getApplicationContext(), address));
+                            ViewModel.setData(new Address(getApplicationContext(), address));
                             return true;
                         case PHOTO:
                             byte[] photo = msg.getData().getByteArray(FileId.PHOTO.name());
-                            ViewModel.setData("Photo", Drawable.createFromStream(new ByteArrayInputStream(photo), "idPic"));
+                            ViewModel.setData(new Photo(getApplicationContext(), photo));
                             return true;
                         default:
                             return false;
@@ -278,10 +279,10 @@ public class ViewActivity extends ActionBarActivity implements StartDiagDialog.L
 
             switch(item.getItemId()) {
                 case R.id.action_card:
-                    ViewModel.start(Person.class.getName());
-                    ViewModel.start(Card.class.getName());
-                    ViewModel.start(Address.class.getName());
-                    ViewModel.start("Photo");
+                    ViewModel.start(Person.class);
+                    ViewModel.start(Card.class);
+                    ViewModel.start(Address.class);
+                    ViewModel.start(Photo.class);
 
                     msg = Message.obtain(null, EidService.READ_DATA, 0, 0);
                     msg.replyTo = mEidServiceResponse;

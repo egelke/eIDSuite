@@ -10,6 +10,7 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 
 import net.egelke.android.eid.R;
+import net.egelke.android.eid.viewmodel.Photo;
 import net.egelke.android.eid.viewmodel.UpdateListener;
 import net.egelke.android.eid.viewmodel.ViewModel;
 
@@ -27,7 +28,8 @@ public class PhotoFragment extends Fragment implements UpdateListener {
         loading = (ProgressBar) rootView.findViewById(R.id.loading_photo);
         image = (ImageView) rootView.findViewById(R.id.photo);
 
-        image.setImageDrawable((Drawable) ViewModel.getData("Photo"));
+        Photo p = (Photo) ViewModel.getData(Photo.class.getName());
+        if (p != null) set(p);
         ViewModel.addListener(this);
 
         return rootView;
@@ -41,7 +43,7 @@ public class PhotoFragment extends Fragment implements UpdateListener {
 
     @Override
     public void startUpdate(String key) {
-        if ("Photo".equals(key)) {
+        if (Photo.class.getName().equals(key)) {
             image.setVisibility(View.GONE);
             loading.setVisibility(View.VISIBLE);
         }
@@ -49,12 +51,19 @@ public class PhotoFragment extends Fragment implements UpdateListener {
 
     @Override
     public void updateFinished(String key, Object oldValue, Object newValue) {
-        if ("Photo".equals(key)) {
-            image.setImageDrawable((Drawable) newValue);
+        if (Photo.class.getName().equals(key)) {
+            set(((Photo) newValue));
 
             loading.setVisibility(View.GONE);
             image.setVisibility(View.VISIBLE);
         }
+    }
+
+    private void set(Photo p) {
+        if (p.getDrawable() == null)
+            image.setImageResource(android.R.color.transparent);
+        else
+            image.setImageDrawable(p.getDrawable());
     }
 }
 

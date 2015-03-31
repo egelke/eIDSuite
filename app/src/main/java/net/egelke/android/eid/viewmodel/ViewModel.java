@@ -18,11 +18,15 @@
 package net.egelke.android.eid.viewmodel;
 
 
+import android.util.Log;
+
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
 
 public final class ViewModel {
+
+    private static final String TAG = "net.egelke.android.eid";
 
     private ViewModel() { }
 
@@ -30,16 +34,21 @@ public final class ViewModel {
 
     private static List<UpdateListener> listeners = new LinkedList<UpdateListener>();
 
-    public static void start(String key) {
+    public static void start(Class clazz) {
+        try {
+            data.put(clazz.getName(), clazz.newInstance());
+        } catch (Exception e) {
+            Log.w(TAG, "failed to empty viewstate", e);
+        }
         for(UpdateListener listener : listeners) {
-            listener.startUpdate(key);
+            listener.startUpdate(clazz.getName());
         }
     }
 
-    public static void setData(String key, Object value) {
-        Object old = data.put(key, value);
+    public static void setData(Object value) {
+        Object old = data.put(value.getClass().getName(), value);
         for(UpdateListener listener : listeners) {
-            listener.updateFinished(key, old, value);
+            listener.updateFinished(value.getClass().getName(), old, value);
         }
     }
 
