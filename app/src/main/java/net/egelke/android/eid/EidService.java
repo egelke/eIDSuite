@@ -76,11 +76,7 @@ import net.egelke.android.eid.view.SettingsActivity;
 import org.spongycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.Security;
@@ -833,7 +829,8 @@ public class EidService extends Service {
         boolean fail = sharedPref.getBoolean(SettingsActivity.KEY_PREF_FAIL, false);
         if (fail) {
             SharedPreferences.Editor edit = sharedPref.edit();
-            edit.putBoolean(SettingsActivity.KEY_PREF_FAIL, fail);
+            edit.putBoolean(SettingsActivity.KEY_PREF_FAIL, false);
+            edit.commit();
             if (e instanceof RuntimeException)
                 throw (RuntimeException) e;
             else

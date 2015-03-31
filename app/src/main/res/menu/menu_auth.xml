@@ -1,4 +1,5 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="net.egelke.android.eid.view.AuthActivity">
     <item android:id="@+id/action_refresh" android:title="@string/action_refresh"
@@ -6,4 +7,6 @@
         android:showAsAction="always" />
     <item android:id="@+id/action_downloads" android:title="@string/action_downloads"
         android:orderInCategory="80" android:showAsAction="never" />
+    <item android:id="@+id/action_settings" android:title="@string/action_settings"
+        android:orderInCategory="200" app:showAsAction="never" />
 </menu>

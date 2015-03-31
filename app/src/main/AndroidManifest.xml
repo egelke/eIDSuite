@@ -82,6 +82,10 @@
             android:theme="@style/AppDialogTheme"
             android:taskAffinity="net.egelke.android.eid.view.PinActivity">
         </activity>
+        <activity android:name=".view.SettingsActivity"
+            android:taskAffinity="net.egelke.android.eid.view.SettingsActivity">
+
+        </activity>
 
         <service android:name=".EidService" >
         </service>

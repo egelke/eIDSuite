@@ -342,6 +342,11 @@ public class AuthActivity extends Activity {
                 i.setAction(DownloadManager.ACTION_VIEW_DOWNLOADS);
                 startActivity(i);
                 return true;
+            case R.id.action_settings:
+                Intent intent = new Intent();
+                intent.setClass(this, SettingsActivity.class);
+                startActivity(intent);
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }

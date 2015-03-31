@@ -39,6 +39,7 @@ import java.util.concurrent.TimeUnit;
 public class CCID implements Closeable {
 
     private static final String TAG = "net.egelke.android.eid";
+    private static final ScheduledExecutorService StateListenerPool = Executors.newScheduledThreadPool(1);
 
     public static enum SlotStatus {
         Active,
@@ -93,6 +94,7 @@ public class CCID implements Closeable {
     public void setCallback(CardCallback value)
     {
         callback = value;
+        setupStateListener();
     }
 
     public synchronized boolean isOpen() {
@@ -160,9 +162,17 @@ public class CCID implements Closeable {
         }
 
         //Listen for state changes
-        if (usbInterrupt != null && callback != null) {
-            ScheduledExecutorService ses = Executors.newScheduledThreadPool(1);
-            stateRequester = ses.scheduleWithFixedDelay(new StateRequesterTask(), 100, 1000, TimeUnit.MILLISECONDS);
+        setupStateListener();
+    }
+
+    private void setupStateListener() {
+        if (usbInterrupt != null) {
+            if (callback != null && stateRequester == null) {
+                stateRequester = StateListenerPool.scheduleWithFixedDelay(new StateRequesterTask(), 100, 1000, TimeUnit.MILLISECONDS);
+            } else if (callback == null && stateRequester != null) {
+                stateRequester.cancel(false);
+                stateRequester = null;
+            }
         }
     }
 
