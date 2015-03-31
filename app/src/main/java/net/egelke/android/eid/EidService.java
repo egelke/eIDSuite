@@ -30,6 +30,8 @@ import android.content.SharedPreferences;
 import android.hardware.usb.UsbConstants;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
@@ -146,6 +148,32 @@ public class EidService extends Service {
                     return;
                 }
 
+                boolean onlineSign = true;
+                if (msg.what == SIGN) {
+                    SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(EidService.this);
+                    String netReq = sharedPref.getString(SettingsActivity.KEY_PREF_SIGN_NETWORK, getString(R.string.pref_sign_network_default));
+
+                    if ("never".equals(netReq)) {
+                        onlineSign = false;
+                    } else {
+                        ConnectivityManager conMngr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                        NetworkInfo netInfo = conMngr.getActiveNetworkInfo();
+                        if ("required".equals(netReq)) {
+                            if (netInfo == null || !netInfo.isConnected() || !netInfo.isAvailable()) {
+                                uiHandler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Toast.makeText(EidService.this, R.string.toastNoNetwork, Toast.LENGTH_LONG).show();
+                                    }
+                                });
+                                return;
+                            }
+                        } else { //online by default
+                            onlineSign = netInfo != null && netInfo.isConnected() && netInfo.isAvailable();
+                        }
+                    }
+                }
+
                 obtainUsbDevice();
                 obtainUsbPermission();
                 obtainEidReader();
@@ -162,7 +190,7 @@ public class EidService extends Service {
                             authenticate(msg);
                             break;
                         case SIGN:
-                            sign(msg);
+                            sign(msg, onlineSign);
                             break;
                         default:
                             super.handleMessage(msg);
@@ -677,7 +705,7 @@ public class EidService extends Service {
         msg.replyTo.send(rsp);
     }
 
-    public void sign(Message msg) throws IOException, DocumentException, GeneralSecurityException, RemoteException {
+    public void sign(Message msg, boolean online) throws IOException, DocumentException, GeneralSecurityException, RemoteException {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                 .setSmallIcon(R.drawable.ic_stat_card)
                 .setContentTitle(EidService.this.getString(R.string.notiSign))
@@ -703,10 +731,9 @@ public class EidService extends Service {
             PdfReader reader = new PdfReader(getContentResolver().openInputStream(uri));
             PdfStamper stamper = PdfStamper.createSignature(reader, null, '\0', tmp, true);
             PdfSignatureAppearance appearance = stamper.getSignatureAppearance();
-            appearance.setReason(reason);
-            appearance.setLocation(location);
-            if (sign != null)
-                appearance.setVisibleSignature(sign);
+            if (reason != null && reason.length() > 0) appearance.setReason(reason);
+            if (location != null && location.length() > 0) appearance.setLocation(location);
+            if (sign != null) appearance.setVisibleSignature(sign);
 
             ExternalSignature pks = new ExternalSignature() {
                 @Override
@@ -742,7 +769,11 @@ public class EidService extends Service {
             TSAClient tsaClient = new TSAClientBouncyCastle("http://tsa.belgium.be/connect");
 
             //Sign
-            MakeSignature.signDetached(appearance, digest, pks, chain, crlList, ocspClient, tsaClient, 0, MakeSignature.CryptoStandard.CADES);
+            if (online) {
+                MakeSignature.signDetached(appearance, digest, pks, chain, crlList, ocspClient, tsaClient, 0, MakeSignature.CryptoStandard.CADES);
+            } else {
+                MakeSignature.signDetached(appearance, digest, pks, chain, null, null, null, 0, MakeSignature.CryptoStandard.CADES);
+            }
 
             //finish
             reader.close();

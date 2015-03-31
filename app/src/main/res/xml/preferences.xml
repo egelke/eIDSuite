@@ -1,13 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen  xmlns:android="http://schemas.android.com/apk/res/android">
     <PreferenceCategory
-        android:title="@string/pref_common"
+        android:title="@string/app_name"
         android:key="pref_cat_common">
-    <CheckBoxPreference
-        android:key="pref_fail"
-        android:title="@string/pref_fail"
-        android:summary="@string/pref_fail_summ"
-        android:defaultValue="false" />
+        <CheckBoxPreference
+            android:key="pref_fail"
+            android:title="@string/pref_fail"
+            android:summary="@string/pref_fail_summ"
+            android:defaultValue="false" />
     </PreferenceCategory>
-    <!-- TODO: http://developer.android.com/guide/topics/ui/settings.html#NetworkUsage -->
+    <PreferenceCategory
+        android:title="@string/title_activity_sign"
+        android:key="pref_cat_sign">
+        <ListPreference
+            android:key="pref_sign_network"
+            android:title="@string/pref_sign_network"
+            android:summary="@string/pref_sign_network_summ"
+            android:entries="@array/pref_sign_network_entries"
+            android:entryValues="@array/pref_sign_network_values"
+            android:defaultValue="@string/pref_sign_network_default" />
+    </PreferenceCategory>
 </PreferenceScreen>

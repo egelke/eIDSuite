@@ -19,10 +19,21 @@
     <string name="action_locate">Update Location</string>
     <string name="action_diag">Diagnose</string>
 
-    <string name="pref_common">All</string>
     <string name="pref_fail">Fail on next error</string>
-    <string name="pref_fail_summ">Fail app on eID error to investigate the issue.  This setting is resets after the failure.</string>
-    <string name="pref_network"></string>
+    <string name="pref_fail_summ">Fail the app on an eID error to allow the app owner to investigate the issue.  This setting is resets after the first eID error.</string>
+    <string name="pref_sign_network">Online signature</string>
+    <string name="pref_sign_network_summ">Add an official (trusted) time and validation info when signing a document depending on the network status.</string>
+    <string-array name="pref_sign_network_entries">
+        <item>Required</item>
+        <item>If online</item>
+        <item>Never</item>
+    </string-array>
+    <string-array name="pref_sign_network_values" translatable="false">
+        <item>required</item>
+        <item>online</item>
+        <item>never</item>
+    </string-array>
+    <string name="pref_sign_network_default" translatable="false">required</string>
 
     <string name="goback">Go Back</string>
     <string name="cont">Continue</string>
@@ -62,6 +73,7 @@
     <string name="toastNoMailClient">No mail client found, please install one (e.g. Email)</string>
     <string name="toastNoDocMngr">No document manager found, please install one</string>
     <string name="toastNoPdfViewer">No PDF viewer found, please install one (e.g google drive)</string>
+    <string name="toastNoNetwork">eID action canceled! Connection required</string>
 
     <string name="fragment_person">Person</string>
     <string name="fragment_address">Address</string>

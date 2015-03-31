@@ -32,7 +32,6 @@
             android:label="@string/title_activity_view" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
@@ -45,7 +44,6 @@
             android:taskAffinity="net.egelke.android.eid.view.SignActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
@@ -58,15 +56,11 @@
             android:taskAffinity="net.egelke.android.eid.view.AuthActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
-
                 <category android:name="android.intent.category.BROWSABLE" />
-                <category android:name="android.intent.category.DEFAULT" />
-
                 <data android:scheme="https" android:host="eservices.minfin.fgov.be"  android:pathPrefix="/taxonweb/" />
             </intent-filter>
         </activity>
@@ -84,7 +78,10 @@
         </activity>
         <activity android:name=".view.SettingsActivity"
             android:taskAffinity="net.egelke.android.eid.view.SettingsActivity">
-
+            <intent-filter>
+                <action android:name="android.intent.action.MANAGE_NETWORK_USAGE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
         <service android:name=".EidService" >
