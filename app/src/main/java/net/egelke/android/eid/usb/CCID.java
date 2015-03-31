@@ -139,13 +139,13 @@ public class CCID implements Closeable {
         //Get the interfaces
         for (int i = 0; i < usbInterface.getEndpointCount(); i++) {
             UsbEndpoint usbEp = usbInterface.getEndpoint(i);
-            if (usbEp.getDirection() == UsbConstants.USB_DIR_IN && usbEp.getType() == UsbConstants.USB_ENDPOINT_XFER_INT && usbEp.getAttributes() == 0x03) {
+            if (usbEp.getDirection() == UsbConstants.USB_DIR_IN && usbEp.getType() == UsbConstants.USB_ENDPOINT_XFER_INT) {
                 usbInterrupt = usbEp;
             }
-            if (usbEp.getDirection() == UsbConstants.USB_DIR_OUT && usbEp.getType() == UsbConstants.USB_ENDPOINT_XFER_BULK && usbEp.getAttributes() == 0x02) {
+            if (usbEp.getDirection() == UsbConstants.USB_DIR_OUT && usbEp.getType() == UsbConstants.USB_ENDPOINT_XFER_BULK) {
                 usbOut = usbEp;
             }
-            if (usbEp.getDirection() == UsbConstants.USB_DIR_IN && usbEp.getType() == UsbConstants.USB_ENDPOINT_XFER_BULK && usbEp.getAttributes() == 0x02) {
+            if (usbEp.getDirection() == UsbConstants.USB_DIR_IN && usbEp.getType() == UsbConstants.USB_ENDPOINT_XFER_BULK) {
                 usbIn = usbEp;
             }
         }

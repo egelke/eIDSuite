@@ -73,6 +73,11 @@ public class DeviceDescriptor {
             builder.append("\r\n");
             builder.append(new InterfaceDescriptor(in).toString());
 
+            for (int j=0; j < in.getEndpointCount(); j++) {
+                builder.append("\r\n");
+                builder.append(new EndPointDescriptor(in.getEndpoint(j)).toString());
+            }
+
             if (in.getInterfaceClass() == UsbConstants.USB_CLASS_CSCID) {
                 hasCCID = true;
                 builder.append("\r\n");
