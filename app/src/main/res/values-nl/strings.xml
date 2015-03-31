@@ -35,8 +35,8 @@
     <string name="notiSign">eID Service: Ondertekenen</string>
     <string name="notiSignMsg">Uw eID wordt gebruikt voor het ondertekenen</string>
 
-    <string name="toastEidFailed">de eID actie is mislukt</string>
-    <string name="toastEidCanceled">de eID actie is geannuleerd</string>
+    <string name="toastEidFailed">De eID actie is mislukt</string>
+    <string name="toastEidCanceled">De eID actie is geannuleerd</string>
     <string name="toastUnknownDevice">Het aangesloten apparaat (%1$s) wordt niet herkend</string>
     <string name="toastPinValid">PIN geldig</string>
     <string name="toastPinCanceled">PIN controle geannuleerd</string>
@@ -153,6 +153,15 @@
     <string name="signField">\"%1$s\" op pagina %2$s</string>
     <string name="title_activity_pinpad">PIN op lezer</string>
     <string name="usePinPad">Typ uw pincode op de lezer.</string>
-
+    <string name="pref_fail">Faal bij de volgende fout</string>
+    <string name="pref_fail_summ">Faal de app op een eID fout om de eigenaar van de app in staat te stellen het probleem te onderzoeken. Deze instelling wordt teruggezet na de eerste eID fout.</string>
+    <string name="pref_sign_network">Online handtekening</string>
+    <string name="pref_sign_network_summ">Voeg, afhankelijk van de status van het netwerk, een officiële (vertrouwde) tijd en validatie informatie toe bij de ondertekening van een document.</string>
+    <string name="toastNoNetwork">De eID actie is geannuleerd! Netwerkverbinding vereist</string>
+    <string-array name="pref_sign_network_entries">
+        <item>Verplicht</item>
+        <item>Indien online</item>
+        <item>Nooit</item>
+    </string-array>
 
 </resources>

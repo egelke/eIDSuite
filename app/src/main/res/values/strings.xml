@@ -22,7 +22,7 @@
     <string name="pref_fail">Fail on next error</string>
     <string name="pref_fail_summ">Fail the app on an eID error to allow the app owner to investigate the issue.  This setting is resets after the first eID error.</string>
     <string name="pref_sign_network">Online signature</string>
-    <string name="pref_sign_network_summ">Add an official (trusted) time and validation info when signing a document depending on the network status.</string>
+    <string name="pref_sign_network_summ">Add an official (trusted) time and validation information when signing a document depending on the network status.</string>
     <string-array name="pref_sign_network_entries">
         <item>Required</item>
         <item>If online</item>
