@@ -1,6 +1,6 @@
 /*
     This file is part of eID Suite.
-    Copyright (C) 2014 Egelke BVBA
+    Copyright (C) 2014-2015 Egelke BVBA
 
     eID Suite is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by

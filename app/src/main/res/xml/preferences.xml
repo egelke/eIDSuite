@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen  xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:title="@string/pref_common"
+        android:key="pref_cat_common">
+    <CheckBoxPreference
+        android:key="pref_fail"
+        android:title="@string/pref_fail"
+        android:summary="@string/pref_fail_summ"
+        android:defaultValue="false" />
+    </PreferenceCategory>
+    <!-- TODO: http://developer.android.com/guide/topics/ui/settings.html#NetworkUsage -->
+</PreferenceScreen>

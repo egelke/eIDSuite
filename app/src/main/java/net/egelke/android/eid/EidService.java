@@ -26,6 +26,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.hardware.usb.UsbConstants;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
@@ -40,6 +41,7 @@ import android.os.Parcelable;
 import android.os.PowerManager;
 import android.os.RemoteException;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
@@ -69,6 +71,7 @@ import net.egelke.android.eid.reader.PinCallback;
 import net.egelke.android.eid.usb.CCID;
 import net.egelke.android.eid.view.PinActivity;
 import net.egelke.android.eid.view.PinPadActivity;
+import net.egelke.android.eid.view.SettingsActivity;
 
 import org.spongycastle.jce.provider.BouncyCastleProvider;
 
@@ -181,21 +184,11 @@ public class EidService extends Service {
                     });
                 } else {
                     Log.e(TAG, "Failed to process message due to security exception", gse);
-                    uiHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(EidService.this, R.string.toastEidFailed, Toast.LENGTH_LONG).show();
-                        }
-                    });
+                    toastItOrFail(gse);
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to process message", e);
-                uiHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(EidService.this, R.string.toastEidFailed, Toast.LENGTH_LONG).show();
-                    }
-                });
+                toastItOrFail(e);
             } finally {
                 if (detachReceiver != null) {
                     unregisterReceiver(detachReceiver);
@@ -832,6 +825,26 @@ public class EidService extends Service {
                 return this.getString(R.string.class_wireless_controller);
             default:
                 return this.getString(R.string.class_unknown);
+        }
+    }
+
+    private void toastItOrFail(Exception e) {
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(EidService.this);
+        boolean fail = sharedPref.getBoolean(SettingsActivity.KEY_PREF_FAIL, false);
+        if (fail) {
+            SharedPreferences.Editor edit = sharedPref.edit();
+            edit.putBoolean(SettingsActivity.KEY_PREF_FAIL, fail);
+            if (e instanceof RuntimeException)
+                throw (RuntimeException) e;
+            else
+                throw new RuntimeException(e);
+        } else {
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(EidService.this, R.string.toastEidFailed, Toast.LENGTH_LONG).show();
+                }
+            });
         }
     }
 }
