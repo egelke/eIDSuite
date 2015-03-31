@@ -62,12 +62,12 @@ public class Identity implements Parcelable {
             dateOfBirth.setTimeInMillis(parcel.readLong());
         }
         String g = parcel.readString();
-        if (!g.isEmpty()) {
+        if (g != null && !g.isEmpty()) {
             gender = Gender.valueOf(parcel.readString());
         }
         nobleTitle = parcel.readString();
         String dt = parcel.readString();
-        if (!dt.isEmpty()) {
+        if (dt != null && !dt.isEmpty()) {
             documentType = DocumentType.valueOf(parcel.readString());
         }
         int sl = parcel.readInt();
