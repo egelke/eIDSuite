@@ -24,6 +24,8 @@ import java.nio.ByteOrder;
 import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class CCIDDescriptor {
     public static enum Voltage {
@@ -76,15 +78,22 @@ public class CCIDDescriptor {
         }
     }
 
-    public static List<CCIDDescriptor> Parse(byte[] data) throws IOException {
+    public static Map<Integer, CCIDDescriptor> Parse(byte[] data) throws IOException {
         ByteBuffer bb = ByteBuffer.wrap(data);
         bb = bb.order(ByteOrder.LITTLE_ENDIAN);
 
-        List<CCIDDescriptor> ccids = new LinkedList<CCIDDescriptor>();
+        int i = -1;
+        Map<Integer, CCIDDescriptor> ccids = new TreeMap<Integer, CCIDDescriptor>();
         while (bb.hasRemaining()) {
+
             int len = bb.get();
             int type = bb.get();
-            if (type == 0x21) {
+            if (type == 0x04) {
+                if (len != 0x09)
+                    throw new IllegalArgumentException("Invalid Interface descriptor (wrong length)");
+                i = bb.getShort();
+                bb.position(bb.position() + len - 4);
+            } else if (type == 0x21) {
                 if (len != 0x36)
                     throw new IllegalArgumentException("Invalid Smart Card Device descriptor (wrong length)");
 
@@ -158,7 +167,8 @@ public class CCIDDescriptor {
 
                 ccid.maxCCIDBusySlots = bb.get();
 
-                ccids.add(ccid);
+                ccids.put(i, ccid);
+                i = -1;
             } else {
                 bb.position(bb.position() + len - 2);
             }
@@ -206,4 +216,6 @@ public class CCIDDescriptor {
     public EnumSet<PINSupport> getPinSupports() {
         return pinSupports;
     }
+
+    public EnumSet<Feature> getFeatures() { return features; }
 }

@@ -8,6 +8,7 @@
             android:title="@string/pref_fail"
             android:summary="@string/pref_fail_summ"
             android:defaultValue="false" />
+        <!-- TODO: add privacy setting -->
     </PreferenceCategory>
     <PreferenceCategory
         android:title="@string/title_activity_sign"

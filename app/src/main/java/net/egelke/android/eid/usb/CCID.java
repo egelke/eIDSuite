@@ -28,9 +28,12 @@ import android.util.Log;
 import net.egelke.android.eid.diagnostic.CCIDDescriptor;
 import net.egelke.android.eid.diagnostic.DeviceDescriptor;
 
+import org.spongycastle.util.encoders.Hex;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -72,6 +75,8 @@ public class CCID implements Closeable {
 
     //connection
     private boolean pinPad;
+    private boolean supportApdu;
+    private boolean autoInit;
     private UsbDeviceConnection usbConnection;
 
     //USB streams
@@ -153,13 +158,10 @@ public class CCID implements Closeable {
         }
 
         //check for pinPad
-        List<CCIDDescriptor> desc =
-            CCIDDescriptor.Parse(usbConnection.getRawDescriptors());
-        if (desc.size() == 1) {
-            pinPad = desc.get(0).getPinSupports().contains(CCIDDescriptor.PINSupport.Verification);
-        } else {
-            pinPad = false;
-        }
+        CCIDDescriptor desc = CCIDDescriptor.Parse(usbConnection.getRawDescriptors()).get(usbInterface.getId());
+        pinPad = desc.getPinSupports().contains(CCIDDescriptor.PINSupport.Verification);
+        supportApdu = desc.getFeatures().contains(CCIDDescriptor.Feature.ShortAPDU) || desc.getFeatures().contains(CCIDDescriptor.Feature.ShortAndExtendedAPDU);
+        autoInit = desc.getFeatures().contains(CCIDDescriptor.Feature.AutoParamConfigViaATR);
 
         //Listen for state changes
         setupStateListener();
@@ -197,21 +199,23 @@ public class CCID implements Closeable {
             byte[] buffer = new byte[10];
             int count = usbConnection.bulkTransfer(usbInterrupt, buffer, buffer.length, 100);
 
+            if (count < 0) return; //no info
+
             if (count < 2) {
-                Log.v(TAG, "CCID interrupt read returned an invalid length: " + count);
+                Log.w(TAG, "CCID interrupt read returned an invalid length: " + count);
                 return;
             }
 
             if (buffer[0] == (byte) 0x51) {
-                Log.v(TAG, String.format("CCID interrupt read returned an error : %x", buffer[3]));
+                Log.w(TAG, String.format("CCID interrupt read returned an error : %x", buffer[3]));
             }
 
             if (buffer[0] != (byte) 0x50) {
-                Log.v(TAG, String.format("CCID interrupt read returned an invalid type: %x", buffer[0]));
+                Log.w(TAG, String.format("CCID interrupt read returned an invalid type: %x", buffer[0]));
                 return;
             }
 
-            Log.v(TAG, String.format("CCID interrupt read returned the following status: %x", buffer[1]));
+            Log.i(TAG, String.format("CCID interrupt read returned the following status: %x", buffer[1]));
             if ((buffer[1] & (byte) 0x03) == (byte) 0x02)
                 callback.removed();
             else if ((buffer[1] & (byte) 0x03) == (byte) 0x03)
@@ -228,20 +232,31 @@ public class CCID implements Closeable {
     }
 
     public synchronized  void init() throws IOException {
-        byte[] pds = new byte[5];
-        pds[0] = 0x13; //bmFindexDindex: Fi/f(max) = 372/5, Di = 4
-        pds[1] = 0x00; //bmTCCKST0: ignored (PCSC compatibility issue)
-        pds[2] = 0x00; //bGuardTimeT0: default
-        pds[3] = 0x0A; //bWaitingIntegerT0:  WI value
-        pds[4] = 0x00; //bClockStop: no clock stop
-        transmit((byte)0x61/*SetParameters*/, null, (byte)0x82/*Parameters*/, true);
+        if (!autoInit) {
+            //TODO:determine Fi/Di from ATR (for now we assume 0x13 for all eID)
+            //See: 9.2 http://read.pudn.com/downloads132/doc/comm/563504/ISO-IEC%207816/ISO%2BIEC%207816-3-2006.pdf
+
+            if (!supportApdu) {
+                //TPDU for PPS
+                transmit((byte) 0x6F, new byte[]{(byte) 0xFF, 0x10, 0x13, (byte) 0xFC}, (byte) 0x80, false);
+            }
+
+            //set params
+            byte[] pds = new byte[5];
+            pds[0] = 0x13; //bmFindexDindex: Fi/f(max) = 372/5, Di = 4
+            pds[1] = 0x00; //bmTCCKST0: ignored (PCSC compatibility issue)
+            pds[2] = 0x00; //bGuardTimeT0: default
+            pds[3] = 0x0A; //bWaitingIntegerT0:  WI value
+            pds[4] = 0x00; //bClockStop: no clock stop
+            transmit((byte) 0x61/*SetParameters*/, pds, (byte) 0x82/*Parameters*/, true);
+        }
     }
 
     public synchronized byte[] transmitApdu(byte[] apdu) throws IOException {
         return transmit((byte)0x6F /*XfrBlock*/, apdu,(byte)0x80/*DataBlock*/, true).data;
     }
 
-    public synchronized byte[]transmitApduWithPin(byte[] apdu) throws IOException {
+    public synchronized byte[] transmitApduWithPin(byte[] apdu) throws IOException {
         //See CCID 1.10: 8.1.3 (PIN uses a BCD format conversion with PIN length insertion)
         //See USB_LANGID: http://www.usb.org/developers/docs/USB_LANGIDs.pdf
         byte[] pvds = new byte[15 + apdu.length];
@@ -275,7 +290,7 @@ public class CCID implements Closeable {
         req[4] = 0x00; //length, continued (we don't support long lenghts)
         req[5] = (byte) 0; //slot
         req[6] = (byte) sequence;
-        req[7] = 0x00; //Bot used (Xfr: Block Waiting Timeout)
+        req[7] = (byte)((cmd == (byte)0x6F) ? 0x01 : 0x00) ; //Not used (Xfr: Block Waiting Timeout)
         req[8] = 0x00; //Not used (Xfr: Param (short APDU))
         req[9] = 0x00; //Not used (Xfr: Param, continued (short APDU))
         if (data != null)
@@ -284,20 +299,21 @@ public class CCID implements Closeable {
         int count;
 
         count = usbConnection.bulkTransfer(usbOut, req, req.length, 5000);
-        Log.v(TAG, String.format("Sent %s bytes to BULK-OUT", count));
         if (count < 0) {
             throw new IOException("Failed to send data to the CCID reader");
         }
+        Log.v(TAG, String.format("Sent %d bytes to BULK-OUT: %s", count, Hex.toHexString(req, 0, count)));
 
-        byte[] rsp = new byte[268];
+        SlotStatus status;
+        byte[] rsp = new byte[271];
         do {
             count = usbConnection.bulkTransfer(usbIn, rsp, rsp.length, 10000);
-            Log.v(TAG, String.format("Read %s bytes from BULK-IN", count));
             if (count < 0) {
-                throw new IOException("Failed to read data to the CCID reader");
+                throw new IOException("Failed to read data from the CCID reader");
             }
-            validateResponse(rsp, rtn);
-        } while (waitIcc && parseSlotStatus(rsp) != SlotStatus.Active);
+            Log.v(TAG, String.format("Read %d bytes from BULK-IN: %s", count, Hex.toHexString(rsp, 0, count)));
+            status = validateResponse(rsp, rtn);
+        } while (waitIcc && status != SlotStatus.Active);
 
         Response retVal = new Response();
         retVal.param = rsp[9];
@@ -310,7 +326,28 @@ public class CCID implements Closeable {
         return retVal;
     }
 
-    private SlotStatus parseSlotStatus(byte[] rsp) throws IOException {
+
+    private SlotStatus validateResponse(byte[] rsp, byte type) throws IOException {
+        if (rsp.length < 10) {
+            throw new IOException("The response is to short");
+        }
+
+        if (rsp[0] != type) {
+            Log.w(TAG, String.format("Unexpected CCID reader response: %X (should be %X)", rsp[0], type ));
+            throw new IOException(String.format("Illegal CCID reader response (wrong type: %X)", rsp[0]));
+        }
+        if (rsp[6] != (byte)sequence) {
+            throw new IOException("Illegal CCID reader response (wrong sequence)");
+        }
+
+        if ((rsp[7] & (byte)0x03) == 0x01 && rsp[8] == 0x00) {
+            throw new UnsupportedOperationException("Command not supported by the reader");
+        }
+        //TODO: check errors like PIN_TIMEOUT (0xF0) and PIN_CANCELLED (0xEF)
+        if ((rsp[7] & (byte)0x03) != 0x00) {
+            throw new IOException(String.format("Command Error returned by the CCID reader: %x", rsp[8]));
+        }
+
         switch((byte)(rsp[7] & ((byte) 0xC0))) {
             case (byte)0x80:
                 return SlotStatus.Missing;
@@ -320,27 +357,6 @@ public class CCID implements Closeable {
                 return SlotStatus.Active;
             default:
                 throw new IOException(String.format("Invalid slot status received from the CCID reader: %X", (byte)(rsp[7] & ((byte) 0xC0))));
-        }
-    }
-
-    private void validateResponse(byte[] rsp, byte type) throws IOException {
-        if (rsp.length < 10) {
-            throw new IOException("The response is to short");
-        }
-
-        if (rsp[6] != (byte)sequence) {
-            throw new IOException("Illegal CCID reader response (wrong sequence)");
-        }
-
-        if (rsp[0] != type) {
-            Log.w(TAG, String.format("Unexpected CCID reader response: %X (should be %X)", rsp[0], type ));
-            throw new IOException(String.format("Illegal CCID reader response (wrong type: %X)", rsp[0]));
-        }
-        if ((rsp[7] & (byte)0x03) == 0x01 && rsp[8] == 0x00) {
-            throw new UnsupportedOperationException("Command not supported by the reader");
-        }
-        if ((rsp[7] & (byte)0x03) != 0x00) {
-            throw new IOException(String.format("Command Error returned by the CCID reader: %x", rsp[8]));
         }
     }
 

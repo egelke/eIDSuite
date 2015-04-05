@@ -157,7 +157,6 @@ public class EidCardReader implements Closeable {
         }
         try {
             processAtr(cardReader.powerOn());
-            //cardReader.init();
         } catch (IOException io) {
             Log.d(TAG, "Failed power on after open");
         }
@@ -170,7 +169,6 @@ public class EidCardReader implements Closeable {
         public void inserted() {
             try {
                 processAtr(cardReader.powerOn());
-                //cardReader.init();
                 if (cardPresent && eidCardCallback != null) eidCardCallback.inserted();
             } catch (IOException io) {
                 Log.d(TAG, "Failed to handle card insert", io);
@@ -186,8 +184,9 @@ public class EidCardReader implements Closeable {
         }
     }
 
-    private void processAtr(byte[] atr) {
+    private void processAtr(byte[] atr) throws IOException{
         cardPresent = isEid(atr);
+        if (cardPresent) cardReader.init();
     }
 	
 	@Override

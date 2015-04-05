@@ -29,6 +29,8 @@ import net.egelke.android.eid.usb.CCID;
 
 import org.spongycastle.util.encoders.Hex;
 
+import java.util.Map;
+
 public class DeviceDescriptor {
 
     private UsbManager m;
@@ -62,10 +64,20 @@ public class DeviceDescriptor {
     public void populate() {
         StringBuilder builder = new StringBuilder();
         builder.append(String.format(
-            "Device: Name=%s, VendorId=%X, ProductId=%X, Class=%X, Subclass=%X, Protocol=%X",
-            d.getDeviceName(), d.getVendorId(), d.getProductId(),
-            d.getDeviceClass(), d.getDeviceSubclass(), d.getDeviceProtocol())
+                        "Device: Name=%s, VendorId=%X, ProductId=%X, Class=%X, Subclass=%X, Protocol=%X",
+                        d.getDeviceName(), d.getVendorId(), d.getProductId(),
+                        d.getDeviceClass(), d.getDeviceSubclass(), d.getDeviceProtocol())
         );
+
+        Map<Integer, CCIDDescriptor> cds = null;
+        UsbDeviceConnection connection = m.openDevice(d);
+        try {
+            cds = CCIDDescriptor.Parse(connection.getRawDescriptors());
+        } catch (Exception e) {
+
+        } finally {
+            connection.close();
+        }
 
         for (int i = 0; i < d.getInterfaceCount(); i++) {
             UsbInterface in = d.getInterface(i);
@@ -73,9 +85,15 @@ public class DeviceDescriptor {
             builder.append("\r\n");
             builder.append(new InterfaceDescriptor(in).toString());
 
-            for (int j=0; j < in.getEndpointCount(); j++) {
+            for (int j = 0; j < in.getEndpointCount(); j++) {
                 builder.append("\r\n");
                 builder.append(new EndPointDescriptor(in.getEndpoint(j)).toString());
+            }
+
+            CCIDDescriptor cd = cds == null ? null : cds.get(in.getId());
+            if (cd != null) {
+                builder.append("\r\n");
+                builder.append(cd.toString());
             }
 
             if (in.getInterfaceClass() == UsbConstants.USB_CLASS_CSCID) {
@@ -100,17 +118,7 @@ public class DeviceDescriptor {
             }
         }
 
-        UsbDeviceConnection connection = m.openDevice(d);
-        try {
-            for (CCIDDescriptor c : CCIDDescriptor.Parse(connection.getRawDescriptors())) {
-                builder.append("\r\n");
-                builder.append(c.toString());
-            }
-        } catch (Exception e) {
 
-        } finally {
-            connection.close();
-        }
 
         msg = builder.toString();
     }
