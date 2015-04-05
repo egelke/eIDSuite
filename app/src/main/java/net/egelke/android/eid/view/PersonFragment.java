@@ -20,6 +20,7 @@ package net.egelke.android.eid.view;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -28,21 +29,19 @@ import android.widget.ProgressBar;
 import android.widget.TableLayout;
 import android.widget.TextView;
 
+import net.egelke.android.eid.EidSuiteApp;
 import net.egelke.android.eid.R;
 import net.egelke.android.eid.viewmodel.Person;
 import net.egelke.android.eid.viewmodel.UpdateListener;
-import net.egelke.android.eid.viewmodel.ViewModel;
 
 /**
  * A simple {@link Fragment} subclass.
  */
-public class PersonFragment extends Fragment implements UpdateListener {
+public class PersonFragment extends Fragment implements UpdateListener<Person> {
 
+    private static final String TAG = "net.egelke.android.eid";
 
-    public PersonFragment() {
-        // Required empty public constructor
-
-    }
+    private Person p;
 
     private ProgressBar loading;
 
@@ -93,9 +92,9 @@ public class PersonFragment extends Fragment implements UpdateListener {
         status_yellowCane = (CheckBox) rootView.findViewById(R.id.status_yellowCane);
         status_extMinority = (CheckBox) rootView.findViewById(R.id.status_extMinority);
 
-        Person p = (Person) ViewModel.getData(Person.class.getName());
-        if (p != null) set(p);
-        ViewModel.addListener(this);
+        p = ((EidSuiteApp) getActivity().getApplication()).getViewObject(Person.class);
+        onUpdate(p);
+        p.addListener(this);
 
         return rootView;
     }
@@ -103,39 +102,34 @@ public class PersonFragment extends Fragment implements UpdateListener {
 
     @Override
     public void onDestroyView() {
-        ViewModel.removeListener(this);
+        p.removeListener(this);
         super.onDestroyView();
     }
 
     @Override
-    public void startUpdate(String key) {
-        if (Person.class.getName().equals(key)) {
+    public void onUpdate(Person p) {
+        if (this.p != p)
+            Log.w(TAG, "Updated object isn't the the instance object");
+
+        if (p.isUpdating()) {
             data.setVisibility(View.GONE);
             loading.setVisibility(View.VISIBLE);
-        }
-    }
+        } else {
+            type.setText(p.getType());
+            name.setText(p.getFamilyName());
+            gNames.setText(p.getGivenNames());
+            birthPlace.setText(p.getBirthPlace());
+            birthDate.setText(p.getBirthDate());
+            sex.setText(p.getSex());
+            natNumber.setText(p.getNationalNumber());
+            nationality.setText(p.getNationality());
+            title.setText(p.getNobleTitle());
+            status_whiteCane.setChecked(p.getWhiteCaneStatus());
+            status_yellowCane.setChecked(p.getYellowCaneStatus());
+            status_extMinority.setChecked(p.getExtMinorityStatus());
 
-    @Override
-    public void updateFinished(String key, Object oldValue, Object newValue) {
-        if (Person.class.getName().equals(key)) {
-            set((Person) newValue);
             loading.setVisibility(View.GONE);
             data.setVisibility(View.VISIBLE);
         }
-    }
-
-    private void set(Person p) {
-        type.setText(p.getType());
-        name.setText(p.getFamilyName());
-        gNames.setText(p.getGivenNames());
-        birthPlace.setText(p.getBirthPlace());
-        birthDate.setText(p.getBirthDate());
-        sex.setText(p.getSex());
-        natNumber.setText(p.getNationalNumber());
-        nationality.setText(p.getNationality());
-        title.setText(p.getNobleTitle());
-        status_whiteCane.setChecked(p.getWhiteCaneStatus());
-        status_yellowCane.setChecked(p.getYellowCaneStatus());
-        status_extMinority.setChecked(p.getExtMinorityStatus());
     }
 }

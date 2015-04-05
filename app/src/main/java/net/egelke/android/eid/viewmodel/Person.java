@@ -24,17 +24,15 @@ import net.egelke.android.eid.R;
 import net.egelke.android.eid.model.Identity;
 import net.egelke.android.eid.model.SpecialStatus;
 
-public class Person {
+public class Person extends ViewObject {
 
     private Identity id;
-    private Context ctx;
 
-    public Person() {
-
+    public Person(Context ctx) {
+        super(ctx);
     }
 
-    public Person(Context ctx, Identity id) {
-        this.ctx = ctx;
+    public void setIdentity(Identity id) {
         this.id = id;
     }
 

@@ -17,20 +17,14 @@
 */
 package net.egelke.android.eid.view;
 
-import android.app.AlertDialog;
-import android.app.DatePickerDialog;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.graphics.drawable.Drawable;
-import android.net.Uri;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
-import android.os.SystemClock;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v4.app.Fragment;
@@ -55,9 +49,6 @@ import net.egelke.android.eid.viewmodel.Address;
 import net.egelke.android.eid.viewmodel.Card;
 import net.egelke.android.eid.viewmodel.Person;
 import net.egelke.android.eid.viewmodel.Photo;
-import net.egelke.android.eid.viewmodel.ViewModel;
-
-import java.io.ByteArrayInputStream;
 
 
 public class ViewActivity extends ActionBarActivity implements StartDiagDialog.Listener {
@@ -180,21 +171,35 @@ public class ViewActivity extends ActionBarActivity implements StartDiagDialog.L
         @Override
         public boolean handleMessage(Message msg) {
             switch (msg.what) {
+                case EidService.END:
+                    ((EidSuiteApp) getApplication()).getViewObject(Person.class).endUpdate();
+                    ((EidSuiteApp) getApplication()).getViewObject(Card.class).endUpdate();
+                    ((EidSuiteApp) getApplication()).getViewObject(Address.class).endUpdate();
+                    ((EidSuiteApp) getApplication()).getViewObject(Photo.class).endUpdate();
+                    return true;
                 case EidService.DATA_RSP:
                     FileId file = FileId.fromId(msg.arg1);
                     switch (file) {
                         case IDENTITY:
+                            Person personView = ((EidSuiteApp) getApplication()).getViewObject(Person.class);
+                            Card cardView = ((EidSuiteApp) getApplication()).getViewObject(Card.class);
                             Identity id = msg.getData().getParcelable(FileId.IDENTITY.name());
-                            ViewModel.setData(new Person(getApplicationContext(), id));
-                            ViewModel.setData(new Card(getApplicationContext(), id));
+                            personView.setIdentity(id);
+                            cardView.setIdentity(id);
+                            personView.endUpdate();
+                            cardView.endUpdate();
                             return true;
                         case ADDRESS:
+                            Address addressView = ((EidSuiteApp) getApplication()).getViewObject(Address.class);
                             net.egelke.android.eid.model.Address address = msg.getData().getParcelable(FileId.ADDRESS.name());
-                            ViewModel.setData(new Address(getApplicationContext(), address));
+                            addressView.setAddress(address);
+                            addressView.endUpdate();
                             return true;
                         case PHOTO:
+                            Photo photoView = ((EidSuiteApp) getApplication()).getViewObject(Photo.class);
                             byte[] photo = msg.getData().getByteArray(FileId.PHOTO.name());
-                            ViewModel.setData(new Photo(getApplicationContext(), photo));
+                            photoView.setData(photo);
+                            photoView.endUpdate();
                             return true;
                         default:
                             return false;
@@ -215,6 +220,7 @@ public class ViewActivity extends ActionBarActivity implements StartDiagDialog.L
                             dialog.show(getSupportFragmentManager(), "EndDiagDialogFragment");
                         }
                     }
+                    return true;
                 default:
                     return false;
             }
@@ -279,10 +285,20 @@ public class ViewActivity extends ActionBarActivity implements StartDiagDialog.L
 
             switch(item.getItemId()) {
                 case R.id.action_card:
-                    ViewModel.start(Person.class);
-                    ViewModel.start(Card.class);
-                    ViewModel.start(Address.class);
-                    ViewModel.start(Photo.class);
+                    Person personView = ((EidSuiteApp) getApplication()).getViewObject(Person.class);
+                    Card cardView = ((EidSuiteApp) getApplication()).getViewObject(Card.class);
+                    Address addressView = ((EidSuiteApp) getApplication()).getViewObject(Address.class);
+                    Photo photoView = ((EidSuiteApp) getApplication()).getViewObject(Photo.class);
+
+                    personView.startUpdate();
+                    cardView.startUpdate();
+                    addressView.startUpdate();
+                    photoView.startUpdate();
+
+                    personView.setIdentity(null);
+                    cardView.setIdentity(null);
+                    addressView.setAddress(null);
+                    photoView.setData(null);
 
                     msg = Message.obtain(null, EidService.READ_DATA, 0, 0);
                     msg.replyTo = mEidServiceResponse;

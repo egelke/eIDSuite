@@ -29,20 +29,14 @@ import java.util.regex.Pattern;
 
 import javax.security.auth.x500.X500Principal;
 
-public class Certificate {
+public class Certificate extends ViewObject {
     private static final String TAG = "net.egelke.android.eid";
     private static final Pattern snExtract = Pattern.compile(".*CN=([^,]*).*");
 
     private X509Certificate cert;
-    private Context ctx;
 
-    public Certificate() {
-
-    }
-
-    public Certificate(Context ctx, X509Certificate cert) {
-        this.ctx = ctx;
-        this.cert = cert;
+    public Certificate(Context ctx) {
+        super(ctx);
     }
 
     @Override

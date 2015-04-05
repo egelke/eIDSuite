@@ -19,6 +19,7 @@ package net.egelke.android.eid.view;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,12 +27,16 @@ import android.widget.ProgressBar;
 import android.widget.TableLayout;
 import android.widget.TextView;
 
+import net.egelke.android.eid.EidSuiteApp;
 import net.egelke.android.eid.R;
 import net.egelke.android.eid.viewmodel.Card;
 import net.egelke.android.eid.viewmodel.UpdateListener;
-import net.egelke.android.eid.viewmodel.ViewModel;
 
-public class CardFragment extends Fragment implements UpdateListener {
+public class CardFragment extends Fragment implements UpdateListener<Card> {
+
+    private static final String TAG = "net.egelke.android.eid";
+
+    private Card c;
 
     private ProgressBar loading;
 
@@ -62,43 +67,38 @@ public class CardFragment extends Fragment implements UpdateListener {
         validFrom = (TextView) rootView.findViewById(R.id.validFrom);
         validTo = (TextView) rootView.findViewById(R.id.validTo);
 
-        Card c = (Card) ViewModel.getData(Card.class.getName());
-        if (c != null) set(c);
-        ViewModel.addListener(this);
+        c = ((EidSuiteApp) getActivity().getApplication()).getViewObject(Card.class);
+        onUpdate(c);
+        c.addListener(this);
 
         return rootView;
     }
 
     @Override
     public void onDestroyView() {
-        ViewModel.removeListener(this);
+        c.removeListener(this);
         super.onDestroyView();
     }
 
-    @Override
-    public void startUpdate(String key) {
-        if (Card.class.getName().equals(key)) {
-            data.setVisibility(View.GONE);
-            loading.setVisibility(View.VISIBLE);
-        }
-    }
 
     @Override
-    public void updateFinished(String key, Object oldValue, Object newValue) {
-        if (Card.class.getName().equals(key)) {
-            set((Card) newValue);
+    public void onUpdate(Card c) {
+        if (this.c != c)
+            Log.w(TAG, "Updated object isn't the the instance object");
+
+        if (c.isUpdating()) {
+            data.setVisibility(View.GONE);
+            loading.setVisibility(View.VISIBLE);
+        } else {
+            cardNr.setText(c.getCardNr());
+            issuePlace.setText(c.getIssuePlace());
+            chipNr.setText(c.getChipNr());
+            validFrom.setText(c.getValidFrom());
+            validTo.setText(c.getValidTo());
 
             loading.setVisibility(View.GONE);
             data.setVisibility(View.VISIBLE);
         }
-    }
-
-    private void set(Card c) {
-        cardNr.setText(c.getCardNr());
-        issuePlace.setText(c.getIssuePlace());
-        chipNr.setText(c.getChipNr());
-        validFrom.setText(c.getValidFrom());
-        validTo.setText(c.getValidTo());
     }
 }
 

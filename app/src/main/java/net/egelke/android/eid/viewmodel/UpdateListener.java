@@ -18,8 +18,9 @@
 package net.egelke.android.eid.viewmodel;
 
 
-public interface UpdateListener {
+import android.content.Context;
 
-    void startUpdate(String key);
-    void updateFinished(String key, Object oldValue, Object newValue);
+public interface UpdateListener<T extends ViewObject> {
+
+    void onUpdate(T value);
 }

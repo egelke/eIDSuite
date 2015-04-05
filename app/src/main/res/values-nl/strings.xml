@@ -157,7 +157,7 @@
     <string name="pref_fail_summ">Faal de app op een eID fout om de eigenaar van de app in staat te stellen het probleem te onderzoeken. Deze instelling wordt teruggezet na de eerste eID fout.</string>
     <string name="pref_sign_network">Online handtekening</string>
     <string name="pref_sign_network_summ">Voeg, afhankelijk van de status van het netwerk, een officiële (vertrouwde) tijd en validatie informatie toe bij de ondertekening van een document.</string>
-    <string name="toastNoNetwork">De eID actie is geannuleerd! Netwerkverbinding vereist</string>
+    <string name="toastNoNetwork">Netwerkverbinding vereist!</string>
     <string-array name="pref_sign_network_entries">
         <item>Verplicht</item>
         <item>Indien online</item>

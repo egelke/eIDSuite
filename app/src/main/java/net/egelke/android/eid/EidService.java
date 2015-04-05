@@ -124,6 +124,9 @@ public class EidService extends Service {
     public static final int SIGN_RSP = 111;
     public static final int DIAG_RSP = 199;
 
+    //Action End
+    public static final int END = 900;
+
     private class IncomingHandler extends Handler {
 
         @Override
@@ -149,31 +152,7 @@ public class EidService extends Service {
                     return;
                 }
 
-                boolean onlineSign = true;
-                if (msg.what == SIGN) {
-                    SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(EidService.this);
-                    String netReq = sharedPref.getString(SettingsActivity.KEY_PREF_SIGN_NETWORK, getString(R.string.pref_sign_network_default));
-
-                    if ("never".equals(netReq)) {
-                        onlineSign = false;
-                    } else {
-                        ConnectivityManager conMngr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-                        NetworkInfo netInfo = conMngr.getActiveNetworkInfo();
-                        if ("required".equals(netReq)) {
-                            if (netInfo == null || !netInfo.isConnected() || !netInfo.isAvailable()) {
-                                uiHandler.post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        Toast.makeText(EidService.this, R.string.toastNoNetwork, Toast.LENGTH_LONG).show();
-                                    }
-                                });
-                                return;
-                            }
-                        } else { //online by default
-                            onlineSign = netInfo != null && netInfo.isConnected() && netInfo.isAvailable();
-                        }
-                    }
-                }
+                boolean online = isOnline(msg);
 
                 obtainUsbDevice();
                 obtainUsbPermission();
@@ -191,7 +170,7 @@ public class EidService extends Service {
                             authenticate(msg);
                             break;
                         case SIGN:
-                            sign(msg, onlineSign);
+                            sign(msg, online);
                             break;
                         default:
                             super.handleMessage(msg);
@@ -199,25 +178,14 @@ public class EidService extends Service {
                 } finally {
                     eidCardReader.close();
                 }
-            } catch (GeneralSecurityException gse) {
-                if (gse.getCause() instanceof UserCancelException) {
-                    uiHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(EidService.this, R.string.toastEidCanceled, Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                } else {
-                    Log.e(TAG, "Failed to process message due to security exception", gse);
-                    toastItOrFail(gse);
-                }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to process message", e);
                 toastItOrFail(e);
             } finally {
-                if (detachReceiver != null) {
-                    unregisterReceiver(detachReceiver);
-                    detachReceiver = null;
+                try {
+                    end(msg);
+                } catch (Exception e) {
+                    Log.w(TAG, "Failed to end the message", e);
                 }
 
                 wl.release();
@@ -260,7 +228,6 @@ public class EidService extends Service {
     private UsbManager usbManager;
     private NotificationManager notifyMgr;
     private PowerManager powerMgr;
-    private int notifyId = 10;
     private boolean destroyed;
     private Thread messageThread;
 
@@ -323,6 +290,35 @@ public class EidService extends Service {
 
 
         super.onDestroy();
+    }
+
+    private boolean isOnline(Message msg) throws AbortException {
+        boolean online = true;
+        if (msg.what == SIGN) {
+            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(EidService.this);
+            String netReq = sharedPref.getString(SettingsActivity.KEY_PREF_SIGN_NETWORK, getString(R.string.pref_sign_network_default));
+
+            if ("never".equals(netReq)) {
+                online = false;
+            } else {
+                ConnectivityManager conMngr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+                NetworkInfo netInfo = conMngr.getActiveNetworkInfo();
+                if ("required".equals(netReq)) {
+                    if (netInfo == null || !netInfo.isConnected() || !netInfo.isAvailable()) {
+                        uiHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                Toast.makeText(EidService.this, R.string.toastNoNetwork, Toast.LENGTH_LONG).show();
+                            }
+                        });
+                        throw new AbortException("Network required");
+                    }
+                } else { //online by default
+                    online = netInfo != null && netInfo.isConnected() && netInfo.isAvailable();
+                }
+            }
+        }
+        return online;
     }
 
     private void obtainUsbDevice() throws AbortException {
@@ -597,7 +593,7 @@ public class EidService extends Service {
             }
         }
 
-        Message rsp = Message.obtain(null, DIAG_RSP, foundDevice ? 0 : 1,  foundEid ? 0 : (foundCard ? 1 : (foundCCID ? 2 : 3)));
+        Message rsp = Message.obtain(null, DIAG_RSP, foundDevice ? 0 : 1, foundEid ? 0 : (foundCard ? 1 : (foundCCID ? 2 : 3)));
         rsp.getData().putString("Result", builder.toString());
         msg.replyTo.send(rsp);
     }
@@ -783,6 +779,19 @@ public class EidService extends Service {
             rsp.getData().putString("output", tmp.getAbsolutePath());
             msg.replyTo.send(rsp);
         }
+    }
+
+    public void end(Message msg) throws RemoteException {
+        if (detachReceiver != null) {
+            unregisterReceiver(detachReceiver);
+            detachReceiver = null;
+        }
+
+        if (msg.replyTo != null) {
+            Message end = Message.obtain(null, END, 0, 0);
+            msg.replyTo.send(end);
+        }
+
     }
 
     private String getVendor() {

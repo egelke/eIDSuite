@@ -74,7 +74,7 @@
     <string name="toastNoMailClient">No mail client found, please install one (e.g. Email)</string>
     <string name="toastNoDocMngr">No document manager found, please install one</string>
     <string name="toastNoPdfViewer">No PDF viewer found, please install one (e.g google drive)</string>
-    <string name="toastNoNetwork">eID action canceled! Connection required</string>
+    <string name="toastNoNetwork">Connection required!</string>
 
     <string name="fragment_person">Person</string>
     <string name="fragment_address">Address</string>

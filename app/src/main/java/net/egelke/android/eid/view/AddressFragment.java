@@ -20,6 +20,7 @@ package net.egelke.android.eid.view;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,12 +28,16 @@ import android.widget.ProgressBar;
 import android.widget.TableLayout;
 import android.widget.TextView;
 
+import net.egelke.android.eid.EidSuiteApp;
 import net.egelke.android.eid.R;
 import net.egelke.android.eid.viewmodel.Address;
 import net.egelke.android.eid.viewmodel.UpdateListener;
-import net.egelke.android.eid.viewmodel.ViewModel;
 
-public class AddressFragment extends Fragment implements UpdateListener {
+public class AddressFragment extends Fragment implements UpdateListener<Address> {
+
+    private static final String TAG = "net.egelke.android.eid";
+
+    private Address a;
 
     private ProgressBar loading;
 
@@ -57,41 +62,34 @@ public class AddressFragment extends Fragment implements UpdateListener {
         zip = (TextView) rootView.findViewById(R.id.zip);
         municipality = (TextView) rootView.findViewById(R.id.municipality);
 
-        Address a = (Address) ViewModel.getData(Address.class.getName());
-        if (a != null) set(a);
-        ViewModel.addListener(this);
+        a = ((EidSuiteApp) getActivity().getApplication()).getViewObject(Address.class);
+        onUpdate(a);
+        a.addListener(this);
 
         return rootView;
     }
 
     @Override
     public void onDestroyView() {
-        ViewModel.removeListener(this);
+        a.removeListener(this);
         super.onDestroyView();
     }
 
     @Override
-    public void startUpdate(String key) {
-        if (Address.class.getName().equals(key)) {
+    public void onUpdate(Address a) {
+        if (this.a != a)
+            Log.w(TAG, "Updated object isn't the the instance object");
 
+        if (a.isUpdating()) {
             data.setVisibility(View.GONE);
             loading.setVisibility(View.VISIBLE);
-        }
-    }
-
-    @Override
-    public void updateFinished(String key, Object oldValue, Object newValue) {
-        if (Address.class.getName().equals(key)) {
-            set((Address) newValue);
+        } else {
+            street.setText(a.getStreet());
+            zip.setText(a.getZip());
+            municipality.setText(a.getMunicipality());
 
             loading.setVisibility(View.GONE);
             data.setVisibility(View.VISIBLE);
         }
-    }
-
-    private void set(Address a) {
-        street.setText(a.getStreet());
-        zip.setText(a.getZip());
-        municipality.setText(a.getMunicipality());
     }
 }

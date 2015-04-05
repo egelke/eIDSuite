@@ -1,6 +1,6 @@
 /*
     This file is part of eID Suite.
-    Copyright (C) 2014 Egelke BVBA
+    Copyright (C) 2014-2015 Egelke BVBA
 
     eID Suite is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
@@ -17,16 +17,25 @@
 */
 package net.egelke.android.eid;
 
-
 import android.app.Application;
+import android.content.Context;
+import android.util.Log;
+import android.view.View;
 
 import com.google.android.gms.analytics.GoogleAnalytics;
 import com.google.android.gms.analytics.Tracker;
 
+import net.egelke.android.eid.viewmodel.ViewObject;
+
+import java.lang.reflect.Constructor;
+import java.util.Hashtable;
+
 public class EidSuiteApp extends Application {
 
+    private static final String TAG = "net.egelke.android.eid";
 
     private Tracker mTracker;
+    private Hashtable<String, ViewObject> data = new Hashtable<String, ViewObject>();
 
     public synchronized Tracker getTracker() {
        if (mTracker == null) {
@@ -34,7 +43,18 @@ public class EidSuiteApp extends Application {
            mTracker = analytics.newTracker(R.xml.app_tracker);
        }
        return mTracker;
+    }
 
+    public synchronized <T extends ViewObject> T getViewObject(Class<T> clazz) {
+        if (!data.containsKey(clazz.getName())) {
+            try {
+                Constructor<T> constructor = clazz.getConstructor(Context.class);
+                data.put(clazz.getName(), constructor.newInstance(getApplicationContext()));
+            } catch (Exception e) {
+                Log.w(TAG, "failed to empty viewstate", e);
+            }
+        }
+        return (T) data.get(clazz.getName());
     }
 
 }

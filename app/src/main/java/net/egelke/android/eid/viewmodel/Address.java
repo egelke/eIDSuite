@@ -20,18 +20,16 @@ package net.egelke.android.eid.viewmodel;
 
 import android.content.Context;
 
-public class Address {
+public class Address extends ViewObject {
 
-    private Context ctx;
     private net.egelke.android.eid.model.Address address;
 
-    public Address() {
-
+    public Address(Context ctx) {
+        super(ctx);
     }
 
-    public Address(Context ctx, net.egelke.android.eid.model.Address address) {
-        this.ctx = ctx;
-        this.address = address;
+    public void setAddress(net.egelke.android.eid.model.Address value) {
+        this.address = value;
     }
 
     public String getStreet() {

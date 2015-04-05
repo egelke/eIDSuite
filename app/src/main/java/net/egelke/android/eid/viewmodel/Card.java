@@ -21,17 +21,15 @@ import android.content.Context;
 
 import net.egelke.android.eid.model.Identity;
 
-public class Card {
+public class Card extends ViewObject {
 
     private Identity id;
-    private Context ctx;
 
-    public Card() {
-
+    public Card(Context ctx) {
+        super(ctx);
     }
 
-    public Card(Context ctx, Identity id) {
-        this.ctx = ctx;
+    public void setIdentity(Identity id) {
         this.id = id;
     }
 

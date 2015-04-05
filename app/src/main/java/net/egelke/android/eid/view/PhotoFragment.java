@@ -1,20 +1,24 @@
 package net.egelke.android.eid.view;
 
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 
+import net.egelke.android.eid.EidSuiteApp;
 import net.egelke.android.eid.R;
 import net.egelke.android.eid.viewmodel.Photo;
 import net.egelke.android.eid.viewmodel.UpdateListener;
-import net.egelke.android.eid.viewmodel.ViewModel;
 
-public class PhotoFragment extends Fragment implements UpdateListener {
+public class PhotoFragment extends Fragment implements UpdateListener<Photo> {
+
+    private static final String TAG = "net.egelke.android.eid";
+
+    private Photo p;
 
     private ProgressBar loading;
 
@@ -28,42 +32,36 @@ public class PhotoFragment extends Fragment implements UpdateListener {
         loading = (ProgressBar) rootView.findViewById(R.id.loading_photo);
         image = (ImageView) rootView.findViewById(R.id.photo);
 
-        Photo p = (Photo) ViewModel.getData(Photo.class.getName());
-        if (p != null) set(p);
-        ViewModel.addListener(this);
+        p = ((EidSuiteApp) getActivity().getApplication()).getViewObject(Photo.class);
+        onUpdate(p);
+        p.addListener(this);
 
         return rootView;
     }
 
     @Override
     public void onDestroyView() {
-        ViewModel.removeListener(this);
+        p.removeListener(this);
         super.onDestroyView();
     }
 
     @Override
-    public void startUpdate(String key) {
-        if (Photo.class.getName().equals(key)) {
+    public void onUpdate(Photo p) {
+        if (this.p != p)
+            Log.w(TAG, "Updated object isn't the the instance object");
+
+        if (p.isUpdating()) {
             image.setVisibility(View.GONE);
             loading.setVisibility(View.VISIBLE);
-        }
-    }
-
-    @Override
-    public void updateFinished(String key, Object oldValue, Object newValue) {
-        if (Photo.class.getName().equals(key)) {
-            set(((Photo) newValue));
+        } else {
+            if (p.getDrawable() == null)
+                image.setImageResource(android.R.color.transparent);
+            else
+                image.setImageDrawable(p.getDrawable());
 
             loading.setVisibility(View.GONE);
             image.setVisibility(View.VISIBLE);
         }
-    }
-
-    private void set(Photo p) {
-        if (p.getDrawable() == null)
-            image.setImageResource(android.R.color.transparent);
-        else
-            image.setImageDrawable(p.getDrawable());
     }
 }
 

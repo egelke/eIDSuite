@@ -23,15 +23,15 @@ import android.graphics.drawable.Drawable;
 
 import java.io.ByteArrayInputStream;
 
-public class Photo {
+public class Photo extends ViewObject {
 
     private byte[] data;
 
-    public Photo() {
-
+    public Photo(Context ctx) {
+        super(ctx);
     }
 
-    public Photo(Context ctx, byte[] data) {
+    public void setData(byte[] data) {
         this.data = data;
     }
 
