@@ -163,5 +163,6 @@
         <item>Indien online</item>
         <item>Nooit</item>
     </string-array>
+    <string name="toastEidAborted">De eID actie is afgebroken</string>
 
 </resources>

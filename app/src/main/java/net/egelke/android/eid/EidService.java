@@ -49,6 +49,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.StandardExceptionParser;
 import com.google.android.gms.analytics.Tracker;
 import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.pdf.PdfReader;
@@ -324,7 +325,7 @@ public class EidService extends Service {
         super.onDestroy();
     }
 
-    private void obtainUsbDevice() {
+    private void obtainUsbDevice() throws AbortException {
         ccidDevice = null;
         detachReceiver = null;
 
@@ -390,7 +391,7 @@ public class EidService extends Service {
             wait = null;
 
             unregisterReceiver(attachReceiver);
-            if (ccidDevice == null) throw new IllegalStateException("No reader connected");
+            if (ccidDevice == null) throw new AbortException("No reader connected");
         }
 
         //Listen to detach
@@ -411,7 +412,7 @@ public class EidService extends Service {
         registerReceiver(detachReceiver, new IntentFilter(UsbManager.ACTION_USB_DEVICE_DETACHED), null, broadcast);
     }
 
-    public void obtainUsbPermission() {
+    public void obtainUsbPermission() throws AbortException {
         if (!usbManager.hasPermission(ccidDevice)) {
             BroadcastReceiver grantReceiver = new BroadcastReceiver() {
                 @Override
@@ -438,7 +439,7 @@ public class EidService extends Service {
             }
             wait = null;
             unregisterReceiver(grantReceiver);
-            if (!usbManager.hasPermission(ccidDevice)) throw new IllegalStateException("No USB permission granted");
+            if (!usbManager.hasPermission(ccidDevice)) throw new AbortException("No USB permission granted");
         }
     }
 
@@ -503,7 +504,7 @@ public class EidService extends Service {
         });
     }
 
-    public void obtainEidCard() {
+    public void obtainEidCard() throws AbortException {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                 .setSmallIcon(R.drawable.ic_stat_card)
                 .setContentTitle(EidService.this.getString(R.string.notiCInit))
@@ -558,7 +559,7 @@ public class EidService extends Service {
             wait = null;
             eidCardReader.setEidCardCallback(null);
 
-            if (!eidCardReader.isCardPresent()) throw new IllegalStateException("No eID card present");
+            if (!eidCardReader.isCardPresent()) throw new AbortException("No eID card present");
         }
     }
 
@@ -856,6 +857,30 @@ public class EidService extends Service {
     }
 
     private void toastItOrFail(Exception e) {
+        Throwable root = e;
+        while (root.getCause() != null) {
+            root = root.getCause();
+        }
+
+        if (root instanceof UserCancelException ) {
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(EidService.this, R.string.toastEidCanceled, Toast.LENGTH_SHORT).show();
+                }
+            });
+            return;
+        }
+        if (root instanceof AbortException) {
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(EidService.this, R.string.toastEidAborted, Toast.LENGTH_SHORT).show();
+                }
+            });
+            return;
+        }
+
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(EidService.this);
         boolean fail = sharedPref.getBoolean(SettingsActivity.KEY_PREF_FAIL, false);
         if (fail) {
@@ -867,6 +892,12 @@ public class EidService extends Service {
             else
                 throw new RuntimeException(e);
         } else {
+            Tracker t = ((EidSuiteApp) this.getApplication()).getTracker();
+            t.send(new HitBuilders.ExceptionBuilder()
+                    .setDescription(new StandardExceptionParser(this, null).getDescription(Thread.currentThread().getName(), root))
+                    .setFatal(false)
+                    .setCustomDimension(1, getVendor())
+                    .setCustomDimension(2, getProduct()).build());
             uiHandler.post(new Runnable() {
                 @Override
                 public void run() {
