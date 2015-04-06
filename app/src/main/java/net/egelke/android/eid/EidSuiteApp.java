@@ -49,7 +49,7 @@ public class EidSuiteApp extends Application {
         if (!data.containsKey(clazz.getName())) {
             try {
                 Constructor<T> constructor = clazz.getConstructor(Context.class);
-                data.put(clazz.getName(), constructor.newInstance(getApplicationContext()));
+                data.put(clazz.getName(), constructor.newInstance(this));
             } catch (Exception e) {
                 Log.w(TAG, "failed to empty viewstate", e);
             }

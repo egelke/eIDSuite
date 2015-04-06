@@ -27,11 +27,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
-import android.database.Cursor;
-import android.location.Address;
 import android.location.Criteria;
-import android.location.Geocoder;
-import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -42,8 +38,6 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
-import android.provider.OpenableColumns;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -61,58 +55,40 @@ import android.widget.Toast;
 
 import com.google.android.gms.analytics.HitBuilders;
 import com.google.android.gms.analytics.Tracker;
-import com.itextpdf.text.pdf.AcroFields;
-import com.itextpdf.text.pdf.PdfDictionary;
-import com.itextpdf.text.pdf.PdfReader;
 
 import net.egelke.android.eid.EidService;
 import net.egelke.android.eid.EidSuiteApp;
 import net.egelke.android.eid.R;
+import net.egelke.android.eid.viewmodel.Location;
+import net.egelke.android.eid.viewmodel.PdfFile;
+import net.egelke.android.eid.viewmodel.UpdateListener;
+import net.egelke.android.eid.viewmodel.ViewObject;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.LinkedList;
-import java.util.List;
+import java.lang.reflect.Array;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 
-public class SignActivity extends Activity {
+public class SignActivity extends Activity implements UpdateListener {
 
     private static final String TAG = "net.egelke.android.eid";
     private static final String ACTION_LOCATED = "net.egelke.android.eid.LOCATED";
-    private static final int INPUT_REQUEST_CODE = 1;
-    private static final int WRITE_REQUEST_CODE = 2;
+    private static final int OPEN_REQUEST_CODE = 1;
+    private static final int SAVE_REQUEST_CODE = 2;
 
     private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
-    //TODO:change into viewmodel
-    private static class SignatureField {
-        String name;
-        List<String> pages;
-        String label;
-
-        SignatureField(String name, List<String> pages, String label) {
-            this.name = name;
-            this.pages = pages;
-            this.label = label;
-        }
+    private class SaveResult extends AsyncTask<Uri, Void, Uri> {
 
         @Override
-        public String toString() {
-            return label;
-        }
-    }
-
-    private class CopyFile extends AsyncTask<Uri, Void, Void> {
-
-        @Override
-        protected Void doInBackground(Uri... params) {
+        protected Uri doInBackground(Uri... params) {
             try {
                 InputStream is = new FileInputStream(tmp);
                 OutputStream os = getContentResolver().openOutputStream(params[0], "w");
@@ -134,88 +110,14 @@ public class SignActivity extends Activity {
             } catch (IOException ioe) {
                 Log.e(TAG, "Failed to copy file", ioe);
             }
-            return null;
+            return params[0];
         }
 
         @Override
-        protected void onPostExecute(Void aVoid) {
+        protected void onPostExecute(Uri file) {
+            p.startUpdate();
+            p.setFile(file);
             Toast.makeText(SignActivity.this, SignActivity.this.getString(R.string.toastSignReady), Toast.LENGTH_SHORT).show();
-            setProgressBarIndeterminateVisibility(false);
-        }
-    }
-
-    private class Locate extends AsyncTask<Location, Void, String> {
-
-        private boolean endProgress;
-
-        public Locate(boolean endProgress) {
-            this.endProgress = endProgress;
-        }
-
-        @Override
-        protected String doInBackground(Location... params) {
-            try {
-                Geocoder gcd = new Geocoder(SignActivity.this);
-                List<Address> address = gcd.getFromLocation(params[0].getLatitude(), params[0].getLongitude(), 1);
-                if (address.size() > 0) {
-                    return address.get(0).getLocality();
-                } else {
-                    return null;
-                }
-            } catch (IOException ioe) {
-                Log.e(TAG, "Failed to obtain location");
-                return null;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(String s) {
-            location.setText(s != null ? s : "");
-            if (endProgress) setProgressBarIndeterminateVisibility(false);
-        }
-    }
-
-    private class Parse extends AsyncTask<Void, Void, List<SignatureField>> {
-
-        @Override
-        protected List<SignatureField> doInBackground(Void... params) {
-            try {
-                PdfReader reader = new PdfReader(getContentResolver().openInputStream(src));
-                try {
-                    AcroFields acroFields = reader.getAcroFields();
-                    List<String> names = acroFields.getBlankSignatureNames();
-
-                    List<SignatureField> fields = new LinkedList<SignatureField>();
-                    for(String name : names) {
-                        List<String> pages = new LinkedList<String>();
-                        for(AcroFields.FieldPosition fp : acroFields.getFieldPositions(name)) {
-                            pages.add(Integer.toString(fp.page));
-                        }
-                        fields.add(new SignatureField(name, pages,
-                                String.format(getString(R.string.signField), name, TextUtils.join(", ", pages))));
-                    }
-
-                    return fields;
-                } finally {
-                    reader.close();
-                }
-            } catch (IOException ioe) {
-                Log.e(TAG, "Failed to parse pdf");
-                return null;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(List<SignatureField> values) {
-            signInv.setChecked(values.isEmpty());
-            signInv.setEnabled(!values.isEmpty());
-            ArrayAdapter<SignatureField> adapter = new ArrayAdapter<SignatureField>(SignActivity.this,
-                    android.R.layout.simple_list_item_single_choice, values);
-            signNames.setAdapter(adapter);
-            signNames.setEnabled(!values.isEmpty());
-            if (!values.isEmpty())
-                signNames.setItemChecked(0, true);
-            setProgressBarIndeterminateVisibility(false);
         }
     }
 
@@ -224,7 +126,6 @@ public class SignActivity extends Activity {
     private BroadcastReceiver bcReceiver;
     private LocationManager locationManager;
     private String locationProvider;
-    private String locationProviderDetailed;
 
     //controls
     private TextView file;
@@ -236,8 +137,10 @@ public class SignActivity extends Activity {
     private Button view;
 
     //Session
-    private Uri src;
+    private Location l;
+    private PdfFile p;
     private File tmp;
+    private ArrayAdapter<PdfFile.Signature> s;
     private ScheduledFuture locationCancel;
 
     private ServiceConnection mConnection = new ServiceConnection() {
@@ -254,22 +157,25 @@ public class SignActivity extends Activity {
         @Override
         public boolean handleMessage(Message msg) {
             switch (msg.what) {
+                case EidService.END:
+                    setProgressBarIndeterminateVisibility(false);
+                    return true;
                 case EidService.SIGN_RSP:
                     tmp = new File(msg.getData().getString("output"));
                     String filename = new File(tmp.getPath()).getName();
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
                         File dstFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename);
-                        (new CopyFile()).execute(Uri.fromFile(dstFile));
+                        (new SaveResult()).execute(Uri.fromFile(dstFile));
                     } else {
                         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
                         intent.addCategory(Intent.CATEGORY_OPENABLE);
                         intent.setType("application/pdf");
                         intent.putExtra(Intent.EXTRA_TITLE, file.getText().toString());
                         try {
-                            startActivityForResult(intent, WRITE_REQUEST_CODE);
+                            startActivityForResult(intent, SAVE_REQUEST_CODE);
                         } catch (ActivityNotFoundException ex) {
-                                Toast.makeText(SignActivity.this, R.string.toastNoDocMngr, Toast.LENGTH_SHORT).show();
-                            }
+                            Toast.makeText(SignActivity.this, R.string.toastNoDocMngr, Toast.LENGTH_SHORT).show();
+                        }
                     }
                     return true;
                 default:
@@ -287,33 +193,9 @@ public class SignActivity extends Activity {
         t.setScreenName("eID Sign");
         t.send(new HitBuilders.ScreenViewBuilder().build());
 
+        bindService(new Intent(this, EidService.class), mConnection, Context.BIND_AUTO_CREATE);
+
         setContentView(R.layout.activity_sign);
-
-        bcReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (ACTION_LOCATED.equals(intent.getAction())) {
-                    (new Locate(true)).execute((Location) intent.getParcelableExtra(LocationManager.KEY_LOCATION_CHANGED));
-                    if (locationCancel != null) {
-                        locationCancel.cancel(false);
-                        locationCancel = null;
-                    }
-                }
-            }
-        };
-        registerReceiver(bcReceiver, new IntentFilter(ACTION_LOCATED));
-
-        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-        Criteria criteria = new Criteria();
-        criteria.setAccuracy(Criteria.ACCURACY_COARSE);
-        criteria.setHorizontalAccuracy(Criteria.ACCURACY_LOW);
-        criteria.setBearingRequired(false);
-        criteria.setSpeedRequired(false);
-        criteria.setAltitudeRequired(false);
-        criteria.setPowerRequirement(Criteria.NO_REQUIREMENT);
-        locationProvider =  locationManager.getBestProvider(criteria, true);
-        criteria.setHorizontalAccuracy(Criteria.ACCURACY_MEDIUM);
-        locationProviderDetailed = locationManager.getBestProvider(criteria, false);
 
         file = (TextView) findViewById(R.id.signFile);
 
@@ -343,8 +225,6 @@ public class SignActivity extends Activity {
         select.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                setProgressBarIndeterminateVisibility(true);
-
                 Intent intent;
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
                     intent = new Intent(Intent.ACTION_GET_CONTENT);
@@ -354,7 +234,7 @@ public class SignActivity extends Activity {
                 intent.setType("application/pdf");
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
                 try {
-                    startActivityForResult(intent, INPUT_REQUEST_CODE);
+                    startActivityForResult(intent, OPEN_REQUEST_CODE);
                 } catch (ActivityNotFoundException ex) {
                     Toast.makeText(SignActivity.this, R.string.toastNoDocMngr, Toast.LENGTH_SHORT).show();
                 }
@@ -366,7 +246,7 @@ public class SignActivity extends Activity {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setData(src);
+                intent.setData(p.getFile());
                 try {
                     startActivity(intent);
                 } catch (ActivityNotFoundException ex) {
@@ -382,12 +262,11 @@ public class SignActivity extends Activity {
                 try {
                     setProgressBarIndeterminateVisibility(true);
                     final Message msg = Message.obtain(null, EidService.SIGN, 0, 0);
-                    msg.getData().putParcelable("input", src);
-                    msg.getData().putString("reason", (String)reason.getSelectedItem());
+                    msg.getData().putParcelable("input", p.getFile());
+                    msg.getData().putString("reason", (String) reason.getSelectedItem());
                     msg.getData().putString("location", location.getText().toString());
-                    if (!signInv.isChecked())
-                        msg.getData().putString("sign",
-                                ((SignatureField) signNames.getItemAtPosition(signNames.getCheckedItemPosition())).name);
+                    if (!signInv.isChecked()) msg.getData().putString("sign",
+                                ((PdfFile.Signature) signNames.getItemAtPosition(signNames.getCheckedItemPosition())).getName());
                     msg.replyTo = mEidServiceResponse;
                     mEidService.send(msg);
                 } catch (Exception e) {
@@ -395,11 +274,49 @@ public class SignActivity extends Activity {
                 }
             }
         });
-        bindService(new Intent(this, EidService.class), mConnection, Context.BIND_AUTO_CREATE);
 
         location = (EditText) findViewById(R.id.location);
 
-        if (locationProvider != null) (new Locate(false)).execute(locationManager.getLastKnownLocation(locationProvider));
+        p = ((EidSuiteApp) getApplication()).getViewObject(PdfFile.class);
+        s = new ArrayAdapter<PdfFile.Signature>(this,
+                android.R.layout.simple_list_item_single_choice, p.getSignatures());
+        signNames.setAdapter(s);
+        p.addListener(this);
+
+        l = ((EidSuiteApp) getApplication()).getViewObject(Location.class);
+        l.addListener(this);
+
+        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        Criteria criteria = new Criteria();
+        criteria.setAccuracy(Criteria.ACCURACY_COARSE);
+        criteria.setHorizontalAccuracy(Criteria.ACCURACY_LOW);
+        criteria.setBearingRequired(false);
+        criteria.setSpeedRequired(false);
+        criteria.setAltitudeRequired(false);
+        criteria.setPowerRequirement(Criteria.NO_REQUIREMENT);
+        locationProvider =  locationManager.getBestProvider(criteria, true);
+
+        if (locationProvider != null) {
+            bcReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    if (ACTION_LOCATED.equals(intent.getAction())) {
+                        setProgressBarIndeterminateVisibility(false);
+                        if (locationCancel != null) {
+                            locationCancel.cancel(false);
+                            locationCancel = null;
+                        }
+
+                        l.startUpdate();
+                        l.setLocation((android.location.Location) intent.getParcelableExtra(LocationManager.KEY_LOCATION_CHANGED));
+                    }
+                }
+            };
+            registerReceiver(bcReceiver, new IntentFilter(ACTION_LOCATED));
+
+            l.startUpdate();
+            l.setLocation(locationManager.getLastKnownLocation(locationProvider));
+        }
     }
 
 
@@ -420,6 +337,7 @@ public class SignActivity extends Activity {
                 startActivity(i);
                 return true;
             case R.id.action_locate:
+                l.startUpdate();
                 setProgressBarIndeterminateVisibility(true);
                 final PendingIntent pi = PendingIntent.getBroadcast(SignActivity.this, 0, new Intent(ACTION_LOCATED), 0);
                 locationManager.requestSingleUpdate(locationProvider, pi);
@@ -451,29 +369,19 @@ public class SignActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
-            case INPUT_REQUEST_CODE:
+            case OPEN_REQUEST_CODE:
                 if (resultCode == Activity.RESULT_OK) {
-                    src = data.getData();
-                    if ("content".equals(src.getScheme())) {
-                        Cursor cursor = getContentResolver().query(src, null, null, null, null);
-                        try {
-                            if (cursor != null && cursor.moveToFirst()) {
-                                file.setText(cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)));
-                            }
-                        } finally {
-                            cursor.close();
-                        }
-                    } else {
-                        file.setText(src.getPath());
-                    }
-                    view.setEnabled(true);
-                    sign.setEnabled(true);
-                    (new Parse()).execute();
+                    p.startUpdate();
+                    p.setFile(data.getData());
+                } else {
+                    Toast.makeText(this, R.string.toastFileCanceled, Toast.LENGTH_LONG).show();
                 }
                 break;
-            case WRITE_REQUEST_CODE:
+            case SAVE_REQUEST_CODE:
                 if (resultCode == Activity.RESULT_OK) {
-                    (new CopyFile()).execute(data.getData());
+                    (new SaveResult()).execute(data.getData());
+                } else {
+                    Toast.makeText(this, R.string.toastFileCanceled, Toast.LENGTH_LONG).show();
                 }
                 break;
             default:
@@ -483,12 +391,36 @@ public class SignActivity extends Activity {
     }
 
     @Override
+    public void onUpdate(ViewObject value) {
+        if (value == p) {
+            if (value.isUpdating()) {
+                view.setEnabled(true);
+                sign.setEnabled(true);
+            } else {
+                view.setEnabled(p.hasFile());
+                sign.setEnabled(p.hasFile());
+                signInv.setChecked(p.hasFile() && !p.hasSignatures());
+                signInv.setEnabled(p.hasSignatures());
+                s.notifyDataSetChanged();
+                if (p.hasSignatures()) signNames.setItemChecked(0, true);
+            }
+        } else if (value == l) {
+            if (!value.isUpdating()) {
+                if (locationCancel != null) {
+                    locationCancel.cancel(false);
+                    locationCancel = null;
+                }
+                location.setText(l.getCity());
+                setProgressBarIndeterminateVisibility(false);
+            }
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         //tear down service
-        if (mEidService != null) {
-            unbindService(mConnection);
-        }
-        unregisterReceiver(bcReceiver);
+        if (mEidService != null) unbindService(mConnection);
+        if (bcReceiver != null) unregisterReceiver(bcReceiver);
         super.onDestroy();
     }
 }

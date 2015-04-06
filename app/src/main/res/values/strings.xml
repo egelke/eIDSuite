@@ -75,6 +75,7 @@
     <string name="toastNoDocMngr">No document manager found, please install one</string>
     <string name="toastNoPdfViewer">No PDF viewer found, please install one (e.g google drive)</string>
     <string name="toastNoNetwork">Connection required!</string>
+    <string name="toastFileCanceled">File action canceled</string>
 
     <string name="fragment_person">Person</string>
     <string name="fragment_address">Address</string>
@@ -119,6 +120,7 @@
     <string name="signFields">Field to sign</string>
     <string name="invSign">Invisible Signature</string>
     <string name="signField">\"%1$s\" on page %2$s</string>
+    <!--string name="signedField">\"%1$s\" (signed by %3$s) on page %2$s</string-->
     <string name="select">Select</string>
     <string name="view">View</string>
     <string name="sign">Sign</string>
