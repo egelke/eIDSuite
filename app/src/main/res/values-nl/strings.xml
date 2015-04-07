@@ -164,5 +164,6 @@
         <item>Nooit</item>
     </string-array>
     <string name="toastEidAborted">De eID actie is afgebroken</string>
+    <string name="toastFileCanceled">De bestands acties is geannuleerd</string>
 
 </resources>

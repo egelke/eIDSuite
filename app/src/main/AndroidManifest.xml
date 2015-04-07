@@ -60,8 +60,11 @@
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="eservices.minfin.fgov.be"  android:pathPrefix="/taxonweb/" />
+
+                <!-- From http://www.belgium.be/nl/online_dienst/ -->
+                <data android:scheme="https" android:host="www.taxonweb.be"  android:pathPrefix="/" />
             </intent-filter>
         </activity>
         <activity

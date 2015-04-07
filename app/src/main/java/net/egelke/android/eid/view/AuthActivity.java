@@ -37,7 +37,11 @@ import android.net.http.SslError;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.IBinder;
+import android.os.Looper;
+import android.os.Message;
 import android.os.Messenger;
+import android.os.RemoteException;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -61,9 +65,17 @@ import net.egelke.android.eid.EidSuiteApp;
 import net.egelke.android.eid.R;
 import net.egelke.android.eid.tls.EidSSLSocketFactory;
 
+import java.io.ByteArrayInputStream;
 import java.net.URL;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.logging.Handler;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -72,9 +84,10 @@ import javax.net.ssl.HttpsURLConnection;
 public class AuthActivity extends Activity {
 
     private static final String TAG = "net.egelke.android.eid";
-    private static final String HOME= "http://www.taxonweb.be/";
+    private static final String HOME= "https://www.google.be/";
     private static final Pattern CD_FILE_PATTERN = Pattern.compile(".*filename=\"?([^\";]*)\"?.*");
 
+    private MyWebViewClient wvc;
     private Messenger mEidService = null;
     private WebView webview;
     private String url;
@@ -128,13 +141,13 @@ public class AuthActivity extends Activity {
         webview.getSettings().setAppCacheEnabled(true);
         webview.getSettings().setBuiltInZoomControls(true);
         webview.setWebChromeClient(new MyWebChromeClient());
-        webview.setWebViewClient(new MyWebViewClient());
         webview.setDownloadListener(new MyDownloadListener());
         setContentView(webview);
 
         getActionBar().setDisplayHomeAsUpEnabled(true);
         registerReceiver(receiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
 
+        //TODO:Load last URL from savedInstanceState
         Intent intent = getIntent();
         if (intent.getAction() == Intent.ACTION_VIEW) {
             url = intent.getData().toString();
@@ -150,6 +163,10 @@ public class AuthActivity extends Activity {
 
         //setup service
         bindService(new Intent(this, EidService.class), mConnection, Context.BIND_AUTO_CREATE);
+
+        wvc = new MyWebViewClient();
+        wvc.start();
+        webview.setWebViewClient(wvc);
     }
 
     private class MyWebChromeClient extends WebChromeClient {
@@ -171,7 +188,7 @@ public class AuthActivity extends Activity {
             base = base.copy(base.getConfig(), true);
 
             Canvas canvas = new Canvas(base);
-            Bitmap large= Bitmap.createScaledBitmap(icon, icon.getWidth()*2, icon.getHeight()*2, false);
+            Bitmap large= Bitmap.createScaledBitmap(icon, base.getWidth()/4, base.getHeight()/4, false);
             canvas.drawBitmap(large, base.getWidth() - large.getWidth(), base.getHeight() - large.getHeight(), null);
             AuthActivity.this.getActionBar().setIcon(new BitmapDrawable(getResources(), base));
         }
@@ -179,7 +196,59 @@ public class AuthActivity extends Activity {
 
     private class MyWebViewClient extends WebViewClient {
 
-        String cookies;
+        private class CookieThread extends Thread {
+
+            public CookieThread() {
+                setName("CookieThread");
+            }
+
+            public void run() {
+                Looper.prepare();
+                cookieMsngr = new Messenger(new android.os.Handler(new android.os.Handler.Callback() {
+                    @Override
+                    public boolean handleMessage(Message msg) {
+                        if (msg.what < 0) {
+                            Looper.myLooper().quit();
+                            return true;
+                        }
+
+                        if (msg.arg1 >= 0) {
+                            iamCookies[msg.arg1] = CookieManager.getInstance().getCookie(iamUrls[msg.arg1]);
+                        } else {
+                            for (int i = 0; i < iamCookies.length; i++) {
+                                iamCookies[i] = CookieManager.getInstance().getCookie(iamUrls[i]);
+                            }
+                        }
+                        return true;
+                    }
+                }));
+                Looper.loop();
+            }
+        }
+
+        private final String[] iamUrls;
+        private final String[] iamCookies;
+
+        private Thread cookieThread;
+        private Messenger cookieMsngr;
+        private EidSSLSocketFactory factory;
+
+        public MyWebViewClient() {
+            iamUrls = new String[]{
+                    "https://mijndossier.rrn.fgov.be/",
+                    "https://certif.iamfas.belgium.be/fas/"
+            };
+            iamCookies = new String[iamUrls.length];
+        }
+
+        public void start() {
+            cookieThread = new CookieThread();
+            cookieThread.start();
+        }
+
+        public void stop() throws RemoteException {
+            cookieMsngr.send(Message.obtain(null, -1, 0, 0));
+        }
 
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
@@ -197,81 +266,54 @@ public class AuthActivity extends Activity {
 
         @Override
         public WebResourceResponse shouldInterceptRequest(final WebView view, final String url) {
-            if (!url.startsWith("https://certif.iamfas.belgium.be/fas/")) {
-                Log.d(TAG, String.format("Getting %s in the default way", url));
-                //get the cookie at the each run, lets hope it is on time.
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        cookies = CookieManager.getInstance().getCookie("https://certif.iamfas.belgium.be/fas/");
-                    }
-                }).start();
-                return null;
+            int iam = -1;
+            for (int i = 0; i < iamUrls.length; i++) {
+                if (url.startsWith(iamUrls[i])) {
+                    iam = i;
+                }
             }
+
             try {
-                EidSSLSocketFactory factory = new EidSSLSocketFactory(mEidService);
-
-                URL path = new URL(url);
-                HttpsURLConnection con = (HttpsURLConnection) path.openConnection();
-                con.setInstanceFollowRedirects(false);
-                con.setRequestProperty("Cookie", cookies);
-                con.setRequestProperty("Referer", AuthActivity.this.url);
-                con.setRequestProperty("Connection", "Keep-Alive");
-                con.setSSLSocketFactory(factory);
-
-                Log.d(TAG, String.format("Getting %s [Cookie=%s, Referer=%s]", url, cookies, AuthActivity.this.url));
-                con.connect();
-                if (con.getResponseCode() == 200) {
-                    Log.d(TAG, String.format("Got 200, returning data (%d)", con.getContentLength()));
-                    String[] contentTypeParts = con.getContentType().split(";[ ]*");
-                    return new WebResourceResponse(contentTypeParts[0], contentTypeParts[1], con.getInputStream());
-                }if (con.getResponseCode() == 302) {
-                    Log.d(TAG, "Got 302, Setting cookies and following");
-                    //Update the cookies before we do the redirect
-                    String iamfasPR=null;
-                    List<String> setCookieValues = con.getHeaderFields().get("Set-Cookie");
-                    for(String setCookieValue : setCookieValues) {
-                        CookieManager.getInstance().setCookie(url, setCookieValue);
-                        if (setCookieValue.startsWith("iamfasPR=")) {
-                            iamfasPR = setCookieValue.split(";[ ]*")[0];
+                if (iam != -1) {
+                    if (factory == null) {
+                        int count = 0;
+                        while (count++ < 10 && (mEidService == null || cookieMsngr == null)) {
+                            SystemClock.sleep(100 * count);
                         }
+                        factory = new EidSSLSocketFactory(mEidService);
                     }
-                    String redirect = con.getHeaderField("Location");
-                    while (con.getInputStream().read() >= 0) { }
-                    con.disconnect();
 
-                    path = new URL(redirect);
-                    con = (HttpsURLConnection) path.openConnection();
+                    URL path = new URL(url);
+                    HttpsURLConnection con = (HttpsURLConnection) path.openConnection();
                     con.setInstanceFollowRedirects(false);
+                    con.setRequestProperty("Cookie", iamCookies[iam]);
                     con.setSSLSocketFactory(factory);
-                    String cookie[] = cookies.split(";[ ]*");
-                    List<String> newCookies = new LinkedList<String>();
-                    for(String newCookie : cookie) {
-                        if (newCookie.startsWith("FASNODE")
-                                || newCookie.startsWith("STORKNODE")
-                                || newCookie.startsWith("iamfaslbPR")
-                                || newCookie.startsWith("IAM3-FAS-JSESSIONID-PR"))
-                            newCookies.add(newCookie);
-                    }
-                    newCookies.add(iamfasPR);
-                    String newCookie = TextUtils.join("; ", newCookies);
-                    con.setRequestProperty("Cookie", newCookie);
-                    con.setRequestProperty("Referer", AuthActivity.this.url);
-                    con.setRequestProperty("Connection", "Keep-Alive");
 
-                    Log.d(TAG, String.format("Getting %s  [Cookie=%s, Referer=%s]", path.toString(), newCookie, AuthActivity.this.url));
                     con.connect();
+                    List<String> setCookieValues = con.getHeaderFields().get("Set-Cookie");
+                    for (String setCookieValue : setCookieValues) {
+                        CookieManager.getInstance().setCookie(url, setCookieValue);
+                    }
+                    cookieMsngr.send(Message.obtain(null, 1, iam, 0));
 
-                    String[] contentTypeParts = con.getContentType().split(";[ ]*");
-                    Log.d(TAG, String.format("Got %d %s (%d)", con.getResponseCode(), con.getResponseMessage(), con.getContentLength()));
-                    return new WebResourceResponse(contentTypeParts[0], contentTypeParts[1], con.getInputStream());
+                    //translate a redirect if needed
+                    if (con.getResponseCode() == 302) {
+                        String redirect = con.getHeaderField("Location");
+                        String html = String.format("<html><body onload=\"timer=setTimeout(function(){ window.location='%s';}, 300)\">" +
+                                "you will be redirected soon" +
+                                "</body></html>", redirect);
+                        return new WebResourceResponse("text/html", Charset.defaultCharset().name(), new ByteArrayInputStream(html.getBytes()));
+                    } else {
+                        String[] contentTypeParts = con.getContentType().split(";[ ]*");
+                        return new WebResourceResponse(contentTypeParts[0], contentTypeParts[1], con.getInputStream());
+                    }
                 } else {
-                    return null;
+                    cookieMsngr.send(Message.obtain(null, 1, -1, 0));
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Failed HTTP intercept", e);
-                return null;
             }
+            return null;
         }
 
         @Override
@@ -369,14 +411,22 @@ public class AuthActivity extends Activity {
         super.onStop();
 
         //tear down service
-        if (mEidService != null) {
-            unbindService(mConnection);
+        if (mEidService != null) unbindService(mConnection);
+        if (wvc != null) {
+            try {
+                wvc.stop();
+            } catch (Exception e) {
+
+            } finally {
+                wvc = null;
+            }
         }
+        webview.setWebViewClient(null);
     }
 
     @Override
     protected void onDestroy() {
-        CookieManager.getInstance().removeAllCookie();
+        //CookieManager.getInstance().removeAllCookie();
         unregisterReceiver(receiver);
         super.onDestroy();
     }

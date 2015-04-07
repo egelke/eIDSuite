@@ -75,10 +75,6 @@ public class PdfFile extends ViewObject {
         @Override
         public String toString() {
             if (label == null) {
-                if (signed)
-                    label = String.format(ctx.getString(R.string.signedField), name,
-                            pages != null ? TextUtils.join(", ", pages) : "?", signedBy);
-                else
                     label = String.format(ctx.getString(R.string.signField), name,
                             pages != null ? TextUtils.join(", ", pages) : "?");
             }
