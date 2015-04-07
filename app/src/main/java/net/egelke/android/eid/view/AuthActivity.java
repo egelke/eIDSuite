@@ -153,7 +153,11 @@ public class AuthActivity extends Activity {
             url = intent.getData().toString();
             webview.loadUrl(url);
         } else {
-            webview.loadUrl(HOME);
+            if (savedInstanceState != null && savedInstanceState.containsKey("page")) {
+                webview.loadUrl(savedInstanceState.getString("page"));
+            } else {
+                webview.loadUrl(HOME);
+            }
         }
     }
 
@@ -167,6 +171,13 @@ public class AuthActivity extends Activity {
         wvc = new MyWebViewClient();
         wvc.start();
         webview.setWebViewClient(wvc);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        outState.putString("page", webview.getUrl());
+
+        super.onSaveInstanceState(outState);
     }
 
     private class MyWebChromeClient extends WebChromeClient {
