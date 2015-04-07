@@ -30,6 +30,7 @@ import org.spongycastle.crypto.tls.AlertDescription;
 import org.spongycastle.crypto.tls.Certificate;
 import org.spongycastle.crypto.tls.CertificateRequest;
 import org.spongycastle.crypto.tls.DefaultTlsClient;
+import org.spongycastle.crypto.tls.ExtensionType;
 import org.spongycastle.crypto.tls.HashAlgorithm;
 import org.spongycastle.crypto.tls.SignatureAlgorithm;
 import org.spongycastle.crypto.tls.SignatureAndHashAlgorithm;
@@ -43,6 +44,8 @@ import org.spongycastle.jce.provider.BouncyCastleProvider;
 import org.spongycastle.util.encoders.Hex;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -55,6 +58,7 @@ import java.security.SecureRandom;
 import java.security.Security;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
+import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -99,7 +103,7 @@ public class EidSSLSocketFactory extends SSLSocketFactory {
     }
 
     @Override
-    public Socket createSocket(Socket s, String host, int port, boolean autoClose) throws IOException {
+    public Socket createSocket(Socket s, final String host, int port, boolean autoClose) throws IOException {
         if (s == null) {
             s = new Socket();
         }
@@ -314,6 +318,30 @@ public class EidSSLSocketFactory extends SSLSocketFactory {
             public void startHandshake() throws IOException {
                 Log.d(TAG, "SSLSocket.startHandshake");
                 tlsClientProtocol.connect(new DefaultTlsClient() {
+
+                    @Override
+                    public Hashtable getClientExtensions() throws IOException {
+                        Hashtable<Integer, byte[]> clientExtensions = super.getClientExtensions();
+                        if (clientExtensions == null) {
+                            clientExtensions = new Hashtable<Integer, byte[]>();
+                        }
+
+                        //Add host_name
+                        byte[] host_name = host.getBytes();
+
+                        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                        final DataOutputStream dos = new DataOutputStream(baos);
+                        dos.writeShort(host_name.length + 3); // entry size
+                        dos.writeByte(0); // name type = hostname
+                        dos.writeShort(host_name.length);
+                        dos.write(host_name);
+                        dos.close();
+
+                        clientExtensions.put(ExtensionType.server_name, baos.toByteArray());
+
+                        return clientExtensions;
+                    }
+
                     @Override
                     public TlsAuthentication getAuthentication() throws IOException {
                         return new TlsAuthentication() {

@@ -246,8 +246,9 @@ public class AuthActivity extends Activity {
 
         public MyWebViewClient() {
             iamUrls = new String[]{
-                    "https://mijndossier.rrn.fgov.be/",
-                    "https://certif.iamfas.belgium.be/fas/"
+                    "https://mijndossier.rrn.fgov.be/", //TODO:Fix
+                    "https://certif.iamfas.belgium.be/fas/",
+                    "https://www.ehealth.fgov.be/authenticate/eid/SSL2ways" //TODO:Fix
             };
             iamCookies = new String[iamUrls.length];
         }
@@ -302,13 +303,15 @@ public class AuthActivity extends Activity {
 
                     con.connect();
                     List<String> setCookieValues = con.getHeaderFields().get("Set-Cookie");
-                    for (String setCookieValue : setCookieValues) {
-                        CookieManager.getInstance().setCookie(url, setCookieValue);
+                    if (setCookieValues != null) {
+                        for (String setCookieValue : setCookieValues) {
+                            CookieManager.getInstance().setCookie(url, setCookieValue);
+                        }
+                        cookieMsngr.send(Message.obtain(null, 1, iam, 0));
                     }
-                    cookieMsngr.send(Message.obtain(null, 1, iam, 0));
 
                     //translate a redirect if needed
-                    if (con.getResponseCode() == 302) {
+                    if (con.getResponseCode() == 301 || con.getResponseCode() == 302 ) {
                         String redirect = con.getHeaderField("Location");
                         String html = String.format("<html><body onload=\"timer=setTimeout(function(){ window.location='%s';}, 300)\">" +
                                 "you will be redirected soon" +
@@ -316,7 +319,8 @@ public class AuthActivity extends Activity {
                         return new WebResourceResponse("text/html", Charset.defaultCharset().name(), new ByteArrayInputStream(html.getBytes()));
                     } else {
                         String[] contentTypeParts = con.getContentType().split(";[ ]*");
-                        return new WebResourceResponse(contentTypeParts[0], contentTypeParts[1], con.getInputStream());
+                        String encoding = contentTypeParts.length > 1 && contentTypeParts[1].startsWith("charset=") ? contentTypeParts[1].replaceFirst("charset=", "") : Charset.defaultCharset().name();
+                        return new WebResourceResponse(contentTypeParts[0], encoding, con.getInputStream());
                     }
                 } else {
                     cookieMsngr.send(Message.obtain(null, 1, -1, 0));
