@@ -83,6 +83,8 @@ public class CardFragment extends Fragment implements UpdateListener<Card> {
 
     @Override
     public void onUpdate(Card c) {
+        if (data == null || loading == null) return;
+
         if (this.c != c)
             Log.w(TAG, "Updated object isn't the the instance object");
 

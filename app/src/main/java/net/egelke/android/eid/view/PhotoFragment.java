@@ -47,6 +47,8 @@ public class PhotoFragment extends Fragment implements UpdateListener<Photo> {
 
     @Override
     public void onUpdate(Photo p) {
+        if (image == null || loading == null) return;
+
         if (this.p != p)
             Log.w(TAG, "Updated object isn't the the instance object");
 

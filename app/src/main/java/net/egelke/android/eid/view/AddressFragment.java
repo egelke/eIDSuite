@@ -77,6 +77,10 @@ public class AddressFragment extends Fragment implements UpdateListener<Address>
 
     @Override
     public void onUpdate(Address a) {
+        if (data == null || loading == null)
+            return;
+
+
         if (this.a != a)
             Log.w(TAG, "Updated object isn't the the instance object");
 

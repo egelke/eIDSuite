@@ -108,6 +108,8 @@ public class PersonFragment extends Fragment implements UpdateListener<Person> {
 
     @Override
     public void onUpdate(Person p) {
+        if (data == null || loading == null) return;
+
         if (this.p != p)
             Log.w(TAG, "Updated object isn't the the instance object");
 
