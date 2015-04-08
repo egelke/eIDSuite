@@ -550,24 +550,24 @@ public class EidSSLSocketFactory extends SSLSocketFactory {
     @Override
     public Socket createSocket(String host, int port) throws IOException, UnknownHostException {
         Log.w(TAG, "Request unsupported method");
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public Socket createSocket(String host, int port, InetAddress localHost, int localPort) throws IOException, UnknownHostException {
         Log.w(TAG, "Request unsupported method");
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public Socket createSocket(InetAddress host, int port) throws IOException {
         Log.w(TAG, "Request unsupported method");
-        return null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public Socket createSocket(InetAddress address, int port, InetAddress localAddress, int localPort) throws IOException {
         Log.w(TAG, "Request unsupported method");
-        return null;
+        throw new UnsupportedOperationException();
     }
 }

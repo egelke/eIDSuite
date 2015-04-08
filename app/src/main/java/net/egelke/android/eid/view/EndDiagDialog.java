@@ -37,28 +37,23 @@ public class EndDiagDialog extends DialogFragment {
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         builder.setMessage(R.string.diagEndMsg)
-                .setTitle(R.string.diagTitle);
-        builder.setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-
-            }
-        });
-        builder.setPositiveButton(R.string.send, new DialogInterface.OnClickListener() {
-            public void onClick(DialogInterface dialog, int id) {
-                Intent i = new Intent(Intent.ACTION_SENDTO);
-                i.setType("text/plain");
-                i.setData(Uri.parse("mailto:info@egelke.net"));
-                i.putExtra(Intent.EXTRA_SUBJECT, "eID Suite: Diagnostics");
-                i.putExtra(Intent.EXTRA_TEXT, getArguments().getString("Result"));
-                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                try {
-                    startActivity(i);
-                } catch (ActivityNotFoundException ex) {
-                    Toast.makeText(getActivity(), R.string.toastNoMailClient, Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
+                .setTitle(R.string.diagTitle)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.send, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        Intent i = new Intent(Intent.ACTION_SENDTO);
+                        i.setType("text/plain");
+                        i.setData(Uri.parse("mailto:info@egelke.net"));
+                        i.putExtra(Intent.EXTRA_SUBJECT, "eID Suite: Diagnostics");
+                        i.putExtra(Intent.EXTRA_TEXT, getArguments().getString("Result"));
+                        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        try {
+                            startActivity(i);
+                        } catch (ActivityNotFoundException ex) {
+                            Toast.makeText(getActivity(), R.string.toastNoMailClient, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
         return builder.create();
     }
 

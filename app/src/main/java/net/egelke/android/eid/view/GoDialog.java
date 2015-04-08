@@ -21,16 +21,20 @@ package net.egelke.android.eid.view;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.app.DialogFragment;
 import android.content.DialogInterface;
 import android.os.Bundle;
-import android.support.v4.app.DialogFragment;
+import android.view.KeyEvent;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.TextView;
 
 import net.egelke.android.eid.R;
 
-public class StartDiagDialog extends DialogFragment {
+public class GoDialog extends DialogFragment {
 
     public interface Listener {
-        void onStartDiag();
+        void onGo(String url);
     }
 
     private Listener listener;
@@ -38,14 +42,32 @@ public class StartDiagDialog extends DialogFragment {
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        builder.setMessage(R.string.diagStartMsg)
-                .setTitle(R.string.diagTitle)
+
+        LayoutInflater inflater = getActivity().getLayoutInflater();
+        View v = inflater.inflate(R.layout.dialog_go, null);
+        final TextView url = (TextView) v.findViewById(R.id.url);
+
+        url.setText(getArguments().getString("url"));
+
+        builder.setView(v).setTitle(R.string.action_go)
                 .setNegativeButton(R.string.cancel, null)
                 .setPositiveButton(R.string.cont, new DialogInterface.OnClickListener() {
+                    @Override
                     public void onClick(DialogInterface dialog, int id) {
-                        listener.onStartDiag();
+                        listener.onGo(url.getText().toString());
                     }
                 });
+
+        url.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                listener.onGo(url.getText().toString());
+                dismiss();
+                return true;
+            }
+        });
+
+        // Create the AlertDialog object and return it
         return builder.create();
     }
 

@@ -42,7 +42,6 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.os.SystemClock;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -68,23 +67,16 @@ import net.egelke.android.eid.tls.EidSSLSocketFactory;
 import java.io.ByteArrayInputStream;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-import java.util.logging.Handler;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.net.ssl.HttpsURLConnection;
 
-public class AuthActivity extends Activity {
+public class AuthActivity extends Activity implements GoDialog.Listener {
 
     private static final String TAG = "net.egelke.android.eid";
-    private static final String HOME= "https://www.google.be/";
+    private static final String HOME= "http://www.taxonweb.be/";
     private static final Pattern CD_FILE_PATTERN = Pattern.compile(".*filename=\"?([^\";]*)\"?.*");
 
     private MyWebViewClient wvc;
@@ -138,7 +130,7 @@ public class AuthActivity extends Activity {
         webview = new WebView(this);
         webview.getSettings().setJavaScriptEnabled(true);
         webview.getSettings().setAppCachePath(getCacheDir().getAbsolutePath());
-        webview.getSettings().setAppCacheEnabled(true);
+        webview.getSettings().setAppCacheEnabled(false); //TODO:make configurable
         webview.getSettings().setBuiltInZoomControls(true);
         webview.setWebChromeClient(new MyWebChromeClient());
         webview.setDownloadListener(new MyDownloadListener());
@@ -246,9 +238,9 @@ public class AuthActivity extends Activity {
 
         public MyWebViewClient() {
             iamUrls = new String[]{
-                    "https://mijndossier.rrn.fgov.be/", //TODO:Fix
+                    "https://mijndossier.rrn.fgov.be/", //TODO:Fix (does everything in mutual ssl)
                     "https://certif.iamfas.belgium.be/fas/",
-                    "https://www.ehealth.fgov.be/authenticate/eid/SSL2ways" //TODO:Fix
+                    "https://www.ehealth.fgov.be/authenticate/eid/SSL2ways" //TODO:Fix (drops the connection)
             };
             iamCookies = new String[iamUrls.length];
         }
@@ -302,8 +294,8 @@ public class AuthActivity extends Activity {
                     con.setSSLSocketFactory(factory);
 
                     con.connect();
-                    List<String> setCookieValues = con.getHeaderFields().get("Set-Cookie");
-                    if (setCookieValues != null) {
+                    if (con.getHeaderFields() != null && con.getHeaderFields().get("Set-Cookie") != null) {
+                        List<String> setCookieValues = con.getHeaderFields().get("Set-Cookie");
                         for (String setCookieValue : setCookieValues) {
                             CookieManager.getInstance().setCookie(url, setCookieValue);
                         }
@@ -391,6 +383,13 @@ public class AuthActivity extends Activity {
             case android.R.id.home:
                 webview.loadUrl(HOME);
                 return true;
+            case R.id.action_go:
+                GoDialog go = new GoDialog();
+                Bundle args = new Bundle();
+                args.putString("url", webview.getUrl());
+                go.setArguments(args);
+                go.show(getFragmentManager(), "Go");
+                return true;
             case R.id.action_refresh:
                 webview.reload();
                 return true;
@@ -412,13 +411,18 @@ public class AuthActivity extends Activity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         // Check if the key event was the Back button and if there's history
-        if ((keyCode == KeyEvent.KEYCODE_BACK) && webview.canGoBack()) {
+        if ((keyCode == KeyEvent.KEYCODE_BACK) && webview != null && webview.canGoBack()) {
             webview.goBack();
             return true;
         }
         // If it wasn't the Back key or there's no web page history, bubble up to the default
         // system behavior (probably exit the activity)
         return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public void onGo(String url) {
+        if (webview != null) webview.loadUrl(url);
     }
 
     @Override
@@ -436,7 +440,7 @@ public class AuthActivity extends Activity {
                 wvc = null;
             }
         }
-        webview.setWebViewClient(null);
+        if (webview != null) webview.setWebViewClient(null);
     }
 
     @Override

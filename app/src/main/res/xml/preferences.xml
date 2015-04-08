@@ -21,4 +21,5 @@
             android:entryValues="@array/pref_sign_network_values"
             android:defaultValue="@string/pref_sign_network_default" />
     </PreferenceCategory>
+    <!-- TODO: add cache setting -->
 </PreferenceScreen>

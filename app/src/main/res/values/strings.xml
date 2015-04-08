@@ -18,6 +18,7 @@
     <string name="action_downloads">Downloads</string>
     <string name="action_locate">Update Location</string>
     <string name="action_diag">Diagnose</string>
+    <string name="action_go">Goto Page</string>
 
     <string name="pref_fail">Fail on next error</string>
     <string name="pref_fail_summ">Fail the app on an eID error to allow the app owner to investigate the issue.  This setting is resets after the first eID error.</string>
