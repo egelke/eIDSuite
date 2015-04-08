@@ -392,6 +392,9 @@ public class SignActivity extends Activity implements UpdateListener {
 
     @Override
     public void onUpdate(ViewObject value) {
+        if (view == null || sign == null || signInv == null || location == null)
+            return;
+
         if (value == p) {
             if (value.isUpdating()) {
                 view.setEnabled(true);
