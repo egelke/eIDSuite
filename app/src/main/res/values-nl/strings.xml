@@ -165,5 +165,12 @@
     </string-array>
     <string name="toastEidAborted">De eID actie is afgebroken</string>
     <string name="toastFileCanceled">De bestands acties is geannuleerd</string>
+    <string name="action_go">Ga naar Pagina</string>
+    <string name="action_search">Zoek</string>
+    <string name="pref_auth_home">Startpagina</string>
+    <string name="pref_auth_home_summ">Stel de startpagina in om naar toe te gaan wanneer u op de home-knop drukt</string>
+    <string name="pref_auth_search">Zoek pagina</string>
+    <string name="pref_auth_search_summ">Stel de zoekpagina in om naar toe te gaan wanneer u op de zoek-knop drukt</string>
+    <string name="toastInvalidUrl">Ongeldige URL</string>
 
 </resources>
