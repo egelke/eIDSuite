@@ -5,8 +5,10 @@
     <item android:id="@+id/action_refresh" android:title="@string/action_refresh"
         android:orderInCategory="20" android:icon="@drawable/ic_menu_refresh"
         android:showAsAction="always" />
+    <item android:id="@+id/action_search" android:title="@string/action_search" android:icon="@drawable/ic_menu_search_holo_dark"
+        android:orderInCategory="40" android:showAsAction="ifRoom" />
     <item android:id="@+id/action_go" android:title="@string/action_go" android:icon="@drawable/ic_go"
-        android:orderInCategory="60" android:showAsAction="ifRoom" />
+        android:orderInCategory="60" android:showAsAction="never" />
     <item android:id="@+id/action_downloads" android:title="@string/action_downloads"
         android:orderInCategory="80" android:showAsAction="never" />
     <item android:id="@+id/action_settings" android:title="@string/action_settings"

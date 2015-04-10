@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen  xmlns:android="http://schemas.android.com/apk/res/android">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
     <PreferenceCategory
         android:title="@string/app_name"
         android:key="pref_cat_common">
@@ -21,5 +21,21 @@
             android:entryValues="@array/pref_sign_network_values"
             android:defaultValue="@string/pref_sign_network_default" />
     </PreferenceCategory>
-    <!-- TODO: add cache setting -->
+    <PreferenceCategory
+        android:title="@string/title_activity_auth"
+        android:key="pref_cat_auth">
+        <EditTextPreference
+            android:key="pref_auth_home"
+            android:title="@string/pref_auth_home"
+            android:summary="@string/pref_auth_home_summ"
+            android:defaultValue="http://www.taxonweb.be/"
+            android:inputType="textUri" />
+        <EditTextPreference
+            android:key="pref_auth_search"
+            android:title="@string/pref_auth_search"
+            android:summary="@string/pref_auth_search_summ"
+            android:defaultValue="http://www.google.be"
+            android:inputType="textUri" />
+
+    </PreferenceCategory>
 </PreferenceScreen>

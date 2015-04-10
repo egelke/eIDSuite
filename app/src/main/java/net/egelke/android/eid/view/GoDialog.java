@@ -28,8 +28,13 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import net.egelke.android.eid.R;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLEncoder;
 
 public class GoDialog extends DialogFragment {
 
@@ -37,6 +42,7 @@ public class GoDialog extends DialogFragment {
         void onGo(String url);
     }
 
+    private TextView url;
     private Listener listener;
 
     @Override
@@ -45,7 +51,7 @@ public class GoDialog extends DialogFragment {
 
         LayoutInflater inflater = getActivity().getLayoutInflater();
         View v = inflater.inflate(R.layout.dialog_go, null);
-        final TextView url = (TextView) v.findViewById(R.id.url);
+        url = (TextView) v.findViewById(R.id.url);
 
         url.setText(getArguments().getString("url"));
 
@@ -54,14 +60,14 @@ public class GoDialog extends DialogFragment {
                 .setPositiveButton(R.string.cont, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int id) {
-                        listener.onGo(url.getText().toString());
+                        navigate();
                     }
                 });
 
         url.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                listener.onGo(url.getText().toString());
+                navigate();
                 dismiss();
                 return true;
             }
@@ -69,6 +75,16 @@ public class GoDialog extends DialogFragment {
 
         // Create the AlertDialog object and return it
         return builder.create();
+    }
+
+    private void navigate() {
+        try {
+            String urlValue  = url.getText().toString();
+            URL parsed = new URL(urlValue.contains("://") ? urlValue : "http://" + urlValue);
+            listener.onGo(parsed.toString());
+        } catch (MalformedURLException e) {
+            Toast.makeText(GoDialog.this.getActivity(), R.string.toastInvalidUrl, Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override

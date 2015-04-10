@@ -19,6 +19,7 @@
     <string name="action_locate">Update Location</string>
     <string name="action_diag">Diagnose</string>
     <string name="action_go">Goto Page</string>
+    <string name="action_search">Search</string>
 
     <string name="pref_fail">Fail on next error</string>
     <string name="pref_fail_summ">Fail the app on an eID error to allow the app owner to investigate the issue.  This setting is resets after the first eID error.</string>
@@ -35,6 +36,10 @@
         <item>never</item>
     </string-array>
     <string name="pref_sign_network_default" translatable="false">required</string>
+    <string name="pref_auth_home">Home page</string>
+    <string name="pref_auth_home_summ">Set the home page to go to when pushing the home button</string>
+    <string name="pref_auth_search">Search page</string>
+    <string name="pref_auth_search_summ">Set the search page to go to when pushing the search button</string>
 
     <string name="goback">Go Back</string>
     <string name="cont">Continue</string>
@@ -77,6 +82,7 @@
     <string name="toastNoPdfViewer">No PDF viewer found, please install one (e.g google drive)</string>
     <string name="toastNoNetwork">Connection required!</string>
     <string name="toastFileCanceled">File action canceled</string>
+    <string name="toastInvalidUrl">Invalid URL</string>
 
     <string name="fragment_person">Person</string>
     <string name="fragment_address">Address</string>

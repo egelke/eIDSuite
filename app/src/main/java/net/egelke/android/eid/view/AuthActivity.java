@@ -27,6 +27,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -42,6 +43,7 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -76,7 +78,9 @@ import javax.net.ssl.HttpsURLConnection;
 public class AuthActivity extends Activity implements GoDialog.Listener {
 
     private static final String TAG = "net.egelke.android.eid";
-    private static final String HOME= "http://www.taxonweb.be/";
+    private static final String HOME = "http://www.taxonweb.be/";
+    private static final String SEARCH = "http://www.google.be";
+
     private static final Pattern CD_FILE_PATTERN = Pattern.compile(".*filename=\"?([^\";]*)\"?.*");
 
     private MyWebViewClient wvc;
@@ -130,7 +134,7 @@ public class AuthActivity extends Activity implements GoDialog.Listener {
         webview = new WebView(this);
         webview.getSettings().setJavaScriptEnabled(true);
         webview.getSettings().setAppCachePath(getCacheDir().getAbsolutePath());
-        webview.getSettings().setAppCacheEnabled(false); //TODO:make configurable
+        webview.getSettings().setAppCacheEnabled(true); //TODO:make configurable
         webview.getSettings().setBuiltInZoomControls(true);
         webview.setWebChromeClient(new MyWebChromeClient());
         webview.setDownloadListener(new MyDownloadListener());
@@ -148,7 +152,8 @@ public class AuthActivity extends Activity implements GoDialog.Listener {
             if (savedInstanceState != null && savedInstanceState.containsKey("page")) {
                 webview.loadUrl(savedInstanceState.getString("page"));
             } else {
-                webview.loadUrl(HOME);
+                SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+                webview.loadUrl(sharedPref.getString("pref_auth_home", HOME));
             }
         }
     }
@@ -379,9 +384,14 @@ public class AuthActivity extends Activity implements GoDialog.Listener {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+
         switch (item.getItemId()) {
             case android.R.id.home:
-                webview.loadUrl(HOME);
+                webview.loadUrl(sharedPref.getString("pref_auth_home", HOME));
+                return true;
+            case R.id.action_search:
+                webview.loadUrl(sharedPref.getString("pref_auth_search", SEARCH));
                 return true;
             case R.id.action_go:
                 GoDialog go = new GoDialog();
