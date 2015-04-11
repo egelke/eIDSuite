@@ -1,11 +1,10 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="net.egelke.android.eid.view.SignActivity">
     <item android:id="@+id/action_locate" android:title="@string/action_locate"
-        android:orderInCategory="50" app:showAsAction="never"/>
+        android:orderInCategory="50" android:showAsAction="never"/>
     <item android:id="@+id/action_downloads" android:title="@string/action_downloads"
         android:orderInCategory="80" android:showAsAction="never" />
     <item android:id="@+id/action_settings" android:title="@string/action_settings"
-        android:orderInCategory="200" app:showAsAction="never" />
+        android:orderInCategory="200" android:showAsAction="never" />
 </menu>

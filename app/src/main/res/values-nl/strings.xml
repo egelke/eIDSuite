@@ -7,7 +7,7 @@
     <string name="title_activity_pin">PIN</string>
 
     <string name="action_settings">Instellingen</string>
-    <string name="action_card">Kaart</string>
+    <string name="action_card">Lees kaart</string>
     <string name="action_pin">Controleer PIN</string>
     <string name="action_cancel">Annuleren</string>
     <string name="action_ok">OK</string>

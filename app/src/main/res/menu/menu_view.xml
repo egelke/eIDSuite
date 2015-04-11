@@ -1,13 +1,12 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     tools:context=".view.ViewActivity">
-    <item android:id="@+id/action_card" android:orderInCategory="50" app:showAsAction="always"
-        android:icon="@drawable/ic_action_card" android:title="@string/action_card" />
+    <item android:id="@+id/action_card" android:title="@string/action_card" android:icon="@drawable/ic_action_card"
+        android:orderInCategory="50" android:showAsAction="always" />
     <item android:id="@+id/action_pin" android:title="@string/action_pin"
-        android:orderInCategory="50" app:showAsAction="never" />
+        android:orderInCategory="50" android:showAsAction="never" />
     <item android:id="@+id/action_diag" android:title="@string/action_diag"
-        android:orderInCategory="100" app:showAsAction="never" />
+        android:orderInCategory="100" android:showAsAction="never" />
     <item android:id="@+id/action_settings" android:title="@string/action_settings"
-        android:orderInCategory="200" app:showAsAction="never" />
+        android:orderInCategory="200" android:showAsAction="never" />
 </menu>

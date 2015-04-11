@@ -39,7 +39,6 @@
         <activity
             android:name=".view.SignActivity"
             android:icon="@drawable/ic_launcher_s"
-            android:theme="@style/AppThemeAlt"
             android:label="@string/title_activity_sign"
             android:taskAffinity="net.egelke.android.eid.view.SignActivity">
             <intent-filter>
@@ -49,7 +48,6 @@
         </activity>
 
         <activity
-            android:theme="@style/AppThemeAlt"
             android:name=".view.AuthActivity"
             android:icon="@drawable/ic_launcher_a"
             android:label="@string/title_activity_auth"

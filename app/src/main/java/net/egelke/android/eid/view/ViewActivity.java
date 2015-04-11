@@ -25,12 +25,12 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
+import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
-import android.support.v7.app.ActionBarActivity;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
-import android.os.Bundle;
 import android.support.v4.view.ViewPager;
 import android.util.Log;
 import android.view.Menu;
@@ -51,7 +51,7 @@ import net.egelke.android.eid.viewmodel.Person;
 import net.egelke.android.eid.viewmodel.Photo;
 
 
-public class ViewActivity extends ActionBarActivity implements StartDiagDialog.Listener {
+public class ViewActivity extends FragmentActivity implements StartDiagDialog.Listener {
 
     private static final String TAG = "net.egelke.android.eid";
 
