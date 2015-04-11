@@ -5,7 +5,6 @@
     android:layout_height="match_parent"
     android:gravity="center"
     android:orientation="vertical"
-    tools:context=".AddressFragment"
     android:padding="5dp">
 
     <ProgressBar

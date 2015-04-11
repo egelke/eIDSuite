@@ -90,6 +90,7 @@
     <string name="fragment_card">Card</string>
     <string name="fragment_identity">Identity</string>
     <string name="fragment_idandcard">Identity &amp; Card</string>
+    <string name="fragment_certs">Certificates</string>
 
     <string name="diagTitle">Diagnose</string>
     <string name="diagStartMsg">Ensure your reader is connected and your eID is inserted.</string>
@@ -149,6 +150,8 @@
 
     <string name="sex_male">Male</string>
     <string name="sex_female">Female</string>
+    
+    <string name="validFromTo">Valid from %1$s to %2$s</string>
 
     <string name="usage_digitalSignature">digital signature</string>
     <string name="usage_nonRepudiation">non repudiation</string>

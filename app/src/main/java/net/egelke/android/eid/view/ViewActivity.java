@@ -47,8 +47,15 @@ import net.egelke.android.eid.belpic.FileId;
 import net.egelke.android.eid.model.Identity;
 import net.egelke.android.eid.viewmodel.Address;
 import net.egelke.android.eid.viewmodel.Card;
+import net.egelke.android.eid.viewmodel.Certificate;
+import net.egelke.android.eid.viewmodel.Certificates;
 import net.egelke.android.eid.viewmodel.Person;
 import net.egelke.android.eid.viewmodel.Photo;
+
+import org.spongycastle.jcajce.provider.asymmetric.X509;
+
+import java.io.File;
+import java.security.cert.X509Certificate;
 
 
 public class ViewActivity extends FragmentActivity implements StartDiagDialog.Listener {
@@ -72,13 +79,15 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                     return new PhotoFragment();
                 case 3:
                     return new CardFragment();
+                case 4:
+                    return new CertsFragment();
             }
             return null;
         }
 
         @Override
         public int getCount() {
-            return 4;
+            return 5;
         }
 
         @Override
@@ -92,6 +101,8 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                     return getString(R.string.fragment_photo);
                 case 3:
                     return getString(R.string.fragment_card);
+                case 4:
+                    return getString(R.string.fragment_certs);
             }
             return null;
         }
@@ -110,13 +121,15 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                     return new IdentityFragment();
                 case 1:
                     return new CardFragment();
+                case 2:
+                    return new CertsFragment();
             }
             return null;
         }
 
         @Override
         public int getCount() {
-            return 2;
+            return 3;
         }
 
         @Override
@@ -126,6 +139,8 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                     return getString(R.string.fragment_identity);
                 case 1:
                     return getString(R.string.fragment_card);
+                case 2:
+                    return getString(R.string.fragment_certs);
             }
             return null;
         }
@@ -142,13 +157,15 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
             switch (position) {
                 case 0:
                     return new IdAndCardFragment();
+                case 1:
+                    return new CertsFragment();
             }
             return null;
         }
 
         @Override
         public int getCount() {
-            return 1;
+            return 2;
         }
 
         @Override
@@ -156,6 +173,8 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
             switch (position) {
                 case 0:
                     return getString(R.string.fragment_idandcard);
+                case 1:
+                    return getString(R.string.fragment_certs);
             }
             return null;
         }
@@ -170,19 +189,21 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
     private Messenger mEidServiceResponse = new Messenger(new Handler(new Handler.Callback() {
         @Override
         public boolean handleMessage(Message msg) {
+            EidSuiteApp app = (EidSuiteApp) getApplication();
             switch (msg.what) {
                 case EidService.END:
-                    ((EidSuiteApp) getApplication()).getViewObject(Person.class).endUpdate();
-                    ((EidSuiteApp) getApplication()).getViewObject(Card.class).endUpdate();
-                    ((EidSuiteApp) getApplication()).getViewObject(Address.class).endUpdate();
-                    ((EidSuiteApp) getApplication()).getViewObject(Photo.class).endUpdate();
+                    app.getViewObject(Person.class).endUpdate();
+                    app.getViewObject(Card.class).endUpdate();
+                    app.getViewObject(Address.class).endUpdate();
+                    app.getViewObject(Photo.class).endUpdate();
+                    app.getViewObject(Certificates.class).endUpdate();
                     return true;
                 case EidService.DATA_RSP:
                     FileId file = FileId.fromId(msg.arg1);
                     switch (file) {
                         case IDENTITY:
-                            Person personView = ((EidSuiteApp) getApplication()).getViewObject(Person.class);
-                            Card cardView = ((EidSuiteApp) getApplication()).getViewObject(Card.class);
+                            Person personView = app.getViewObject(Person.class);
+                            Card cardView = app.getViewObject(Card.class);
                             Identity id = msg.getData().getParcelable(FileId.IDENTITY.name());
                             personView.setIdentity(id);
                             cardView.setIdentity(id);
@@ -190,16 +211,28 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                             cardView.endUpdate();
                             return true;
                         case ADDRESS:
-                            Address addressView = ((EidSuiteApp) getApplication()).getViewObject(Address.class);
+                            Address addressView = app.getViewObject(Address.class);
                             net.egelke.android.eid.model.Address address = msg.getData().getParcelable(FileId.ADDRESS.name());
                             addressView.setAddress(address);
                             addressView.endUpdate();
                             return true;
                         case PHOTO:
-                            Photo photoView = ((EidSuiteApp) getApplication()).getViewObject(Photo.class);
+                            Photo photoView = app.getViewObject(Photo.class);
                             byte[] photo = msg.getData().getByteArray(FileId.PHOTO.name());
                             photoView.setData(photo);
                             photoView.endUpdate();
+                            return true;
+                        case AUTH_CERT:
+                        case SIGN_CERT:
+                        case INTCA_CERT:
+                        case ROOTCA_CERT:
+                        case RRN_CERT:
+                            Certificates certsView = app.getViewObject(Certificates.class);
+                            for(String name : msg.getData().keySet()) {
+                                byte[] cert = msg.getData().getByteArray(name);
+                                certsView.getCertificates().add(new Certificate(cert, getApplicationContext()));
+                            }
+                            certsView.onUpdate();
                             return true;
                         default:
                             return false;
@@ -285,26 +318,35 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
 
             switch(item.getItemId()) {
                 case R.id.action_card:
-                    Person personView = ((EidSuiteApp) getApplication()).getViewObject(Person.class);
-                    Card cardView = ((EidSuiteApp) getApplication()).getViewObject(Card.class);
-                    Address addressView = ((EidSuiteApp) getApplication()).getViewObject(Address.class);
-                    Photo photoView = ((EidSuiteApp) getApplication()).getViewObject(Photo.class);
+                    EidSuiteApp app = (EidSuiteApp) getApplication();
+                    Person personView = app.getViewObject(Person.class);
+                    Card cardView = app.getViewObject(Card.class);
+                    Address addressView = app.getViewObject(Address.class);
+                    Photo photoView = app.getViewObject(Photo.class);
+                    Certificates certsView = app.getViewObject(Certificates.class);
 
                     personView.startUpdate();
                     cardView.startUpdate();
                     addressView.startUpdate();
                     photoView.startUpdate();
+                    certsView.startUpdate();
 
                     personView.setIdentity(null);
                     cardView.setIdentity(null);
                     addressView.setAddress(null);
                     photoView.setData(null);
+                    certsView.getCertificates().clear();
 
                     msg = Message.obtain(null, EidService.READ_DATA, 0, 0);
                     msg.replyTo = mEidServiceResponse;
                     msg.getData().putBoolean(FileId.IDENTITY.name(), true);
                     msg.getData().putBoolean(FileId.ADDRESS.name(), true);
                     msg.getData().putBoolean(FileId.PHOTO.name(), true);
+                    msg.getData().putBoolean(FileId.AUTH_CERT.name(), true);
+                    msg.getData().putBoolean(FileId.SIGN_CERT.name(), true);
+                    msg.getData().putBoolean(FileId.INTCA_CERT.name(), true);
+                    msg.getData().putBoolean(FileId.ROOTCA_CERT.name(), true);
+                    msg.getData().putBoolean(FileId.RRN_CERT.name(), true);
                     mEidService.send(msg);
                     return true;
                 case R.id.action_pin:

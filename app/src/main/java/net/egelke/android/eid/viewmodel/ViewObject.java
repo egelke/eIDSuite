@@ -60,7 +60,7 @@ public abstract class ViewObject {
         }
     }
 
-    protected void onUpdate() {
+    public void onUpdate() {
         for(UpdateListener listener : listeners) {
             listener.onUpdate(this);
         }

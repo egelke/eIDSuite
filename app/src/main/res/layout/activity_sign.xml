@@ -21,7 +21,8 @@
     <Spinner
         android:id="@+id/reason"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        tools:listitem="@android:layout/simple_spinner_item"/>
 
     <TextView
         android:layout_width="match_parent"
@@ -50,7 +51,8 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:choiceMode="singleChoice" />
+        android:choiceMode="singleChoice"
+        tools:listitem="@android:layout/simple_list_item_single_choice" />
 
 
     <RelativeLayout
