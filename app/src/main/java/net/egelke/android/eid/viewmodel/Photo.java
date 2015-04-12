@@ -35,6 +35,10 @@ public class Photo extends ViewObject {
         this.data = data;
     }
 
+    public byte[] getData() {
+        return this.data;
+    }
+
     public Drawable getDrawable() {
         return data != null ? Drawable.createFromStream(new ByteArrayInputStream(data), "idPic") : null;
     }

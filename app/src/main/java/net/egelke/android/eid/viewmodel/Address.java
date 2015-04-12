@@ -32,6 +32,10 @@ public class Address extends ViewObject {
         this.address = value;
     }
 
+    public net.egelke.android.eid.model.Address getAddress() {
+        return this.address;
+    }
+
     public String getStreet() {
         return address != null ? address.streetAndNumber : "";
     }

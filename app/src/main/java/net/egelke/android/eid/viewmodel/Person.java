@@ -36,6 +36,10 @@ public class Person extends ViewObject {
         this.id = id;
     }
 
+    public Identity getIdentity() {
+        return this.id;
+    }
+
     public String getType() {
         if (id != null && id.documentType != null) {
             switch (id.documentType) {

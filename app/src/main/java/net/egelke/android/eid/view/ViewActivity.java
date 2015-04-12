@@ -21,6 +21,9 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.net.Uri;
+import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
@@ -44,6 +47,7 @@ import net.egelke.android.eid.EidService;
 import net.egelke.android.eid.EidSuiteApp;
 import net.egelke.android.eid.R;
 import net.egelke.android.eid.belpic.FileId;
+import net.egelke.android.eid.file.Serializer;
 import net.egelke.android.eid.model.Identity;
 import net.egelke.android.eid.viewmodel.Address;
 import net.egelke.android.eid.viewmodel.Card;
@@ -55,12 +59,72 @@ import net.egelke.android.eid.viewmodel.Photo;
 import org.spongycastle.jcajce.provider.asymmetric.X509;
 
 import java.io.File;
+import java.io.OutputStream;
 import java.security.cert.X509Certificate;
 
 
 public class ViewActivity extends FragmentActivity implements StartDiagDialog.Listener {
 
     private static final String TAG = "net.egelke.android.eid";
+
+    private static final int SAVE_REQUEST_CODE = 1;
+
+    private class SaveTask extends AsyncTask<Uri, Void, Exception> {
+
+        @Override
+        protected Exception doInBackground(Uri... uris) {
+            try {
+                EidSuiteApp app = (EidSuiteApp) getApplication();
+                Person personView = app.getViewObject(Person.class);
+                Address addressView = app.getViewObject(Address.class);
+                Photo photoView = app.getViewObject(Photo.class);
+                Certificates certsView = app.getViewObject(Certificates.class);
+
+                OutputStream outputStream = getContentResolver().openOutputStream(uris[0]);
+                try {
+                    Serializer writer = new Serializer(outputStream);
+                    writer.setIdentity(personView.getIdentity());
+                    writer.setPhoto(photoView.getData());
+                    writer.setAddress(addressView.getAddress());
+                    for(Certificate certView : certsView.getCertificates()) {
+                        switch (certView.getId()) {
+                            case AUTH_CERT:
+                                writer.setAuth(certView.getValue());
+                                break;
+                            case SIGN_CERT:
+                                writer.setSign(certView.getValue());
+                                break;
+                            case INTCA_CERT:
+                                writer.setIntca(certView.getValue());
+                                break;
+                            case ROOTCA_CERT:
+                                writer.setRoot(certView.getValue());
+                                break;
+                            case RRN_CERT:
+                                writer.setRrn(certView.getValue());
+                                break;
+                        }
+                    }
+                    writer.write();
+                    return null;
+                } finally {
+                    outputStream.close();
+                }
+            } catch (Exception e) {
+                Log.e("net.egelke.android.eid", "Writing the eid files failed", e);
+                return e;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Exception e) {
+            if (e != null) {
+                Toast.makeText(getApplicationContext(), "Failed to save the eID file", Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(getApplicationContext(), "Saved the eID file", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
 
     public class SmallPagerAdapter extends FragmentPagerAdapter {
 
@@ -184,6 +248,8 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
 
     private ViewPager mViewPager;
 
+    private MenuItem mSave;
+
     private Messenger mEidService = null;
 
     private Messenger mEidServiceResponse = new Messenger(new Handler(new Handler.Callback() {
@@ -197,6 +263,7 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                     app.getViewObject(Address.class).endUpdate();
                     app.getViewObject(Photo.class).endUpdate();
                     app.getViewObject(Certificates.class).endUpdate();
+                    if (mSave != null) mSave.setEnabled(app.getViewObject(Certificates.class).getCertificates().size() >= 5);
                     return true;
                 case EidService.DATA_RSP:
                     FileId file = FileId.fromId(msg.arg1);
@@ -230,7 +297,7 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                             Certificates certsView = app.getViewObject(Certificates.class);
                             for(String name : msg.getData().keySet()) {
                                 byte[] cert = msg.getData().getByteArray(name);
-                                certsView.getCertificates().add(new Certificate(cert, getApplicationContext()));
+                                certsView.getCertificates().add(new Certificate(file, cert, getApplicationContext()));
                             }
                             certsView.onUpdate();
                             return true;
@@ -294,6 +361,12 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_view, menu);
+
+        mSave = menu.findItem(R.id.action_save);
+
+        EidSuiteApp app = (EidSuiteApp) getApplication();
+        if (mSave != null) mSave.setEnabled(app.getViewObject(Certificates.class).getCertificates().size() >= 5);
+
         return true;
     }
 
@@ -314,17 +387,15 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
             }
 
             Message msg;
-
+            EidSuiteApp app = (EidSuiteApp) getApplication();
+            Person personView = app.getViewObject(Person.class);
+            Card cardView = app.getViewObject(Card.class);
+            Address addressView = app.getViewObject(Address.class);
+            Photo photoView = app.getViewObject(Photo.class);
+            Certificates certsView = app.getViewObject(Certificates.class);
 
             switch(item.getItemId()) {
                 case R.id.action_card:
-                    EidSuiteApp app = (EidSuiteApp) getApplication();
-                    Person personView = app.getViewObject(Person.class);
-                    Card cardView = app.getViewObject(Card.class);
-                    Address addressView = app.getViewObject(Address.class);
-                    Photo photoView = app.getViewObject(Photo.class);
-                    Certificates certsView = app.getViewObject(Certificates.class);
-
                     personView.startUpdate();
                     cardView.startUpdate();
                     addressView.startUpdate();
@@ -336,6 +407,7 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                     addressView.setAddress(null);
                     photoView.setData(null);
                     certsView.getCertificates().clear();
+                    if (mSave != null) mSave.setEnabled(false);
 
                     msg = Message.obtain(null, EidService.READ_DATA, 0, 0);
                     msg.replyTo = mEidServiceResponse;
@@ -357,6 +429,20 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                     DialogFragment dialog = new StartDiagDialog();
                     dialog.show(getSupportFragmentManager(), "StartDiagDialogFragment");
                     return true;
+                case R.id.action_save:
+                    Identity id = personView.getIdentity();
+                    if (id == null) return true;
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                        intent.addCategory(Intent.CATEGORY_OPENABLE);
+                        intent.setType("*/*");
+                        intent.putExtra(Intent.EXTRA_TITLE,String.format("%s.eid", id.nationalNumber));
+                        startActivityForResult(intent, SAVE_REQUEST_CODE);
+                    } else {
+                        Toast.makeText(this, R.string.toastRequiresKitKat, Toast.LENGTH_LONG).show();
+                    }
+                    return true;
                 case R.id.action_settings:
                     Intent intent = new Intent();
                     intent.setClass(this, SettingsActivity.class);
@@ -369,6 +455,15 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
             //TODO: toast
             Log.e(TAG, "Failed to send message to eID Service", e);
             return true;
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == SAVE_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                (new SaveTask()).execute(data.getData());
+            }
         }
     }
 

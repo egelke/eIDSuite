@@ -19,6 +19,8 @@ package net.egelke.android.eid.viewmodel;
 
 import android.content.Context;
 
+import net.egelke.android.eid.belpic.FileId;
+
 import org.spongycastle.asn1.x500.RDN;
 import org.spongycastle.asn1.x500.style.BCStyle;
 import org.spongycastle.asn1.x500.style.IETFUtils;
@@ -26,11 +28,23 @@ import org.spongycastle.asn1.x500.style.IETFUtils;
 public class Certificate extends ViewObject {
     private static final String TAG = "net.egelke.android.eid";
 
+    private FileId id;
+    private byte[] value;
     private org.spongycastle.asn1.x509.Certificate cert;
 
-    public Certificate(byte[] cert, Context ctx) {
+    public Certificate(FileId id, byte[] value, Context ctx) {
         super(ctx);
-        this.cert = org.spongycastle.asn1.x509.Certificate.getInstance(cert);
+        this.id  = id;
+        this.value = value;
+        this.cert = org.spongycastle.asn1.x509.Certificate.getInstance(value);
+    }
+
+    public FileId getId() {
+        return id;
+    }
+
+    public byte[] getValue() {
+        return value;
     }
 
     public String getTitle() {
