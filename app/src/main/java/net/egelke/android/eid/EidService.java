@@ -33,16 +33,8 @@ import android.hardware.usb.UsbManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
-import android.os.Build;
-import android.os.Handler;
-import android.os.IBinder;
-import android.os.Looper;
-import android.os.Message;
-import android.os.Messenger;
-import android.os.Parcelable;
-import android.os.PowerManager;
-import android.os.RemoteException;
-import android.os.SystemClock;
+import android.os.*;
+import android.os.Process;
 import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
@@ -129,6 +121,10 @@ public class EidService extends Service {
 
     private class IncomingHandler extends Handler {
 
+        public IncomingHandler(Looper looper) {
+            super(looper);
+        }
+
         @Override
         public void handleMessage(Message msg) {
             //Stop if requested
@@ -194,33 +190,6 @@ public class EidService extends Service {
         }
     }
 
-    private class BroadcastThread extends Thread {
-
-        public BroadcastThread() {
-            setDaemon(true);
-            setName("EidServiceBCThread");
-        }
-
-        public void run() {
-            Looper.prepare();
-            broadcast = new Handler();
-            Looper.loop();
-        }
-    }
-
-    private class MessageThread extends Thread {
-
-        public MessageThread() {
-            setName("EidServiceMsgThread");
-        }
-
-        public void run() {
-            Looper.prepare();
-            messenger = new Messenger(new IncomingHandler());
-            Looper.loop();
-        }
-    }
-
     //permanent properties
     private Handler uiHandler = null;
     private Handler broadcast = null;
@@ -229,7 +198,7 @@ public class EidService extends Service {
     private NotificationManager notifyMgr;
     private PowerManager powerMgr;
     private boolean destroyed;
-    private Thread messageThread;
+    private HandlerThread messageThread;
 
     //temporally properties
     private BroadcastReceiver detachReceiver;
@@ -246,19 +215,26 @@ public class EidService extends Service {
         notifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         powerMgr = (PowerManager) getSystemService(Context.POWER_SERVICE);
 
-        uiHandler = new Handler(Looper.getMainLooper());
-        (new BroadcastThread()).start();
-        messageThread = new MessageThread();
+        HandlerThread bcThread = new HandlerThread("EidServiceBCThread", Process.THREAD_PRIORITY_BACKGROUND);
+        bcThread.start();
+
+        messageThread = new HandlerThread("EidServiceMsgThread", Process.THREAD_PRIORITY_FOREGROUND);
         messageThread.start();
+
+        uiHandler = new Handler(Looper.getMainLooper());
+        broadcast = new Handler(bcThread.getLooper());
+        messenger = new Messenger(new IncomingHandler(messageThread.getLooper()));
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+
+        return START_NOT_STICKY;
     }
 
     @Override
     public IBinder onBind(Intent intent) {
         Log.d(TAG, "EidService onBind " + this);
-        int count = 0;
-        while (count < 10 && (messenger == null || broadcast == null)) {
-            SystemClock.sleep(++count * 10);
-        }
         return messenger.getBinder();
     }
 
