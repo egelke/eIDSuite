@@ -65,11 +65,6 @@ import net.egelke.android.eid.viewmodel.UpdateListener;
 import net.egelke.android.eid.viewmodel.ViewObject;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -132,7 +127,7 @@ public class SignActivity extends Activity implements UpdateListener {
                     Intent sendIntent = new Intent();
                     sendIntent.setAction(Intent.ACTION_SEND);
                     sendIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(tmp));
-                    sendIntent.setType("text/xml");
+                    sendIntent.setType("application/pdf");
                     try {
                         startActivity(sendIntent);
                     } catch (ActivityNotFoundException ex) {
