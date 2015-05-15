@@ -15,7 +15,7 @@
     You should have received a copy of the GNU Affero General Public License
     along with eID Suite.  If not, see <http://www.gnu.org/licenses/>.
 */
-package net.egelke.android.eid;
+package net.egelke.android.eid.service;
 
 import android.annotation.TargetApi;
 import android.app.Notification;
@@ -58,12 +58,19 @@ import com.itextpdf.text.pdf.security.OcspClientBouncyCastle;
 import com.itextpdf.text.pdf.security.TSAClient;
 import com.itextpdf.text.pdf.security.TSAClientBouncyCastle;
 
+import net.egelke.android.eid.AbortException;
+import net.egelke.android.eid.CardBlockedException;
+import net.egelke.android.eid.EidSuiteApp;
+import net.egelke.android.eid.R;
+import net.egelke.android.eid.UserCancelException;
 import net.egelke.android.eid.belpic.FileId;
 import net.egelke.android.eid.diagnostic.DeviceDescriptor;
+import net.egelke.android.eid.reader.APDUException;
 import net.egelke.android.eid.reader.EidCardCallback;
 import net.egelke.android.eid.reader.EidCardReader;
 import net.egelke.android.eid.reader.PinCallback;
 import net.egelke.android.eid.usb.CCID;
+import net.egelke.android.eid.usb.CCIDException;
 import net.egelke.android.eid.view.PinActivity;
 import net.egelke.android.eid.view.PinPadActivity;
 import net.egelke.android.eid.view.SettingsActivity;
@@ -78,6 +85,7 @@ import java.security.Security;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -98,9 +106,6 @@ public class EidService extends Service {
         if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null)
             Security.addProvider(new BouncyCastleProvider());
     }
-
-    //Internal
-    private static final int QUIT = 0;
 
     //Actions
     public static final int READ_DATA = 1;
@@ -127,12 +132,6 @@ public class EidService extends Service {
 
         @Override
         public void handleMessage(Message msg) {
-            //Stop if requested
-            if (destroyed) {
-                Looper.myLooper().quit();
-                return;
-            }
-
             NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                     .setSmallIcon(R.drawable.ic_stat_card)
                     .setContentTitle(EidService.this.getText(R.string.notiRInit))
@@ -176,7 +175,7 @@ public class EidService extends Service {
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Failed to process message", e);
-                toastItOrFail(e);
+                processError(e);
             } finally {
                 try {
                     end(msg);
@@ -197,7 +196,7 @@ public class EidService extends Service {
     private UsbManager usbManager;
     private NotificationManager notifyMgr;
     private PowerManager powerMgr;
-    private boolean destroyed;
+    private HandlerThread bcThread;
     private HandlerThread messageThread;
 
     //temporally properties
@@ -215,7 +214,7 @@ public class EidService extends Service {
         notifyMgr = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         powerMgr = (PowerManager) getSystemService(Context.POWER_SERVICE);
 
-        HandlerThread bcThread = new HandlerThread("EidServiceBCThread", Process.THREAD_PRIORITY_BACKGROUND);
+        bcThread = new HandlerThread("EidServiceBCThread", Process.THREAD_PRIORITY_BACKGROUND);
         bcThread.start();
 
         messageThread = new HandlerThread("EidServiceMsgThread", Process.THREAD_PRIORITY_FOREGROUND);
@@ -228,7 +227,6 @@ public class EidService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-
         return START_NOT_STICKY;
     }
 
@@ -242,28 +240,20 @@ public class EidService extends Service {
     public void onDestroy() {
         Log.d(TAG, "EidService onDestroy " + this);
 
-        destroyed = true;
-
-        //make sure there is another message
-        try {
-            messenger.send(Message.obtain(null, QUIT));
-        } catch (RemoteException e) {
-            Log.w(TAG, "Failed to send the quit message", e);
+        //end the threads
+        if (!bcThread.quit()) {
+            Log.w(TAG, "Failed to quit broadcast thread loop");
         }
-        //remove any lock
+        if (!messageThread.quit()) {
+            Log.w(TAG, "Failed to quit main thread loop");
+        }
+
+        //remove any lock to allow the loopers to quit
         if (wait != null) {
             synchronized (wait) {
                 wait.notify();
             }
         }
-
-        //wait for the message thread to stop (give up after 1s)
-        try {
-            messageThread.join(1000);
-        } catch (Exception e) {
-            Log.w(TAG, "Failed wait for the message thread to stop", e);
-        }
-
 
         super.onDestroy();
     }
@@ -411,7 +401,8 @@ public class EidService extends Service {
             }
             wait = null;
             unregisterReceiver(grantReceiver);
-            if (!usbManager.hasPermission(ccidDevice)) throw new AbortException("No USB permission granted");
+            if (!usbManager.hasPermission(ccidDevice))
+                throw new AbortException("No USB permission granted");
         }
     }
 
@@ -504,7 +495,7 @@ public class EidService extends Service {
 
             final String msg = String.format(EidService.this.getString(R.string.notiInsertMsg),
                     Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP ? "" :
-                    getProductNameFromOs(ccidDevice));
+                            getProductNameFromOs(ccidDevice));
             builder = new NotificationCompat.Builder(this)
                     .setSmallIcon(R.drawable.ic_stat_card)
                     .setContentTitle(EidService.this.getString(R.string.notiInsert))
@@ -559,7 +550,7 @@ public class EidService extends Service {
                 builder.append(dd.toString());
 
                 foundDevice = true;
-                if (dd.hasCCID())  foundCCID = true;
+                if (dd.hasCCID()) foundCCID = true;
                 if (dd.hasCard()) foundCard = true;
                 if (dd.hasEid()) foundEid = true;
             } catch (Exception e) {
@@ -604,7 +595,7 @@ public class EidService extends Service {
         }
     }
 
-    public void verifyPin(Message msg) throws IOException {
+    public void verifyPin(Message msg) throws IOException, UserCancelException {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                 .setSmallIcon(R.drawable.ic_stat_card)
                 .setContentTitle(EidService.this.getString(R.string.notiVerify))
@@ -616,33 +607,16 @@ public class EidService extends Service {
                 .setCustomDimension(1, getVendor())
                 .setCustomDimension(2, getProduct()).build());
 
-        try {
-            eidCardReader.verifyPin();
-            uiHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(EidService.this, R.string.toastPinValid, Toast.LENGTH_SHORT).show();
-                }
-            });
-
-        } catch (UserCancelException uce) {
-            uiHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(EidService.this, R.string.toastPinCanceled, Toast.LENGTH_LONG).show();
-                }
-            });
-        } catch (CardBlockedException cbe) {
-            uiHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(EidService.this, R.string.toastPinBlocked, Toast.LENGTH_LONG).show();
-                }
-            });
-        }
+        eidCardReader.verifyPin();
+        uiHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(EidService.this, R.string.toastPinValid, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
-    public void authenticate(Message msg) throws IOException, RemoteException {
+    public void authenticate(Message msg) throws IOException, RemoteException, UserCancelException {
         NotificationCompat.Builder builder = new NotificationCompat.Builder(EidService.this)
                 .setSmallIcon(R.drawable.ic_stat_card)
                 .setContentTitle(EidService.this.getString(R.string.notiAuth))
@@ -656,25 +630,10 @@ public class EidService extends Service {
 
         byte[] hash = msg.getData().getByteArray("Hash");
         EidCardReader.DigestAlg digestAlg = EidCardReader.DigestAlg.valueOf(msg.getData().getString("DigestAlg", "SHA1"));
+        byte[] signature = eidCardReader.signPkcs1(hash, digestAlg, EidCardReader.Key.AUTHENTICATION);
 
-        Message rsp;
-        try {
-            rsp = Message.obtain(null, AUTH_RSP, 0, 0);
-            byte[] signature = eidCardReader.signPkcs1(hash, digestAlg, EidCardReader.Key.AUTHENTICATION);
-            rsp.getData().putByteArray("Signature", signature);
-        } catch (UserCancelException e) {
-            Log.i(TAG, "User canceled authentication", e);
-            rsp = Message.obtain(null, AUTH_RSP, 1, 0);
-        } catch (CardBlockedException cbe) {
-            Log.w(TAG, "Authentication failed because of blocked card", cbe);
-            rsp = Message.obtain(null, AUTH_RSP, 1, 1);
-        } catch (IOException ioe) {
-            Log.e(TAG, "Authentication failed because of generic error", ioe);
-            rsp = Message.obtain(null, AUTH_RSP, 1, 2);
-        } catch (RuntimeException ioe) {
-            Log.e(TAG, "Authentication failed because of generic error", ioe);
-            rsp = Message.obtain(null, AUTH_RSP, 1, 2);
-        }
+        Message rsp = Message.obtain(null, AUTH_RSP, 0, 0);
+        rsp.getData().putByteArray("Signature", signature);
         msg.replyTo.send(rsp);
     }
 
@@ -737,7 +696,7 @@ public class EidService extends Service {
             chain[1] = eidCardReader.readCertificate(FileId.INTCA_CERT);
             chain[2] = eidCardReader.readCertificate(FileId.ROOTCA_CERT);
             List<CrlClient> crlList = new LinkedList<CrlClient>();
-            crlList.add(new CrlClientOnline(new Certificate[] { chain[1] } )); //only request CRL of INT-CA
+            crlList.add(new CrlClientOnline(new Certificate[]{chain[1]})); //only request CRL of INT-CA
             OcspClient ocspClient = new OcspClientBouncyCastle();
             TSAClient tsaClient = new TSAClientBouncyCastle("http://tsa.belgium.be/connect");
 
@@ -767,7 +726,6 @@ public class EidService extends Service {
             Message end = Message.obtain(null, END, 0, 0);
             msg.replyTo.send(end);
         }
-
     }
 
     private String getVendor() {
@@ -841,29 +799,40 @@ public class EidService extends Service {
         }
     }
 
-    private void toastItOrFail(Exception e) {
+    private void processError(Exception e) {
         Throwable root = e;
         while (root.getCause() != null) {
             root = root.getCause();
         }
 
-        if (root instanceof UserCancelException ) {
+        if (root instanceof UserCancelException) {
             uiHandler.post(new Runnable() {
                 @Override
                 public void run() {
                     Toast.makeText(EidService.this, R.string.toastEidCanceled, Toast.LENGTH_SHORT).show();
                 }
             });
-            return;
-        }
-        if (root instanceof AbortException) {
+        } else if (root instanceof AbortException) {
             uiHandler.post(new Runnable() {
                 @Override
                 public void run() {
                     Toast.makeText(EidService.this, R.string.toastEidAborted, Toast.LENGTH_SHORT).show();
                 }
             });
-            return;
+        } else if (root instanceof CardBlockedException) {
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(EidService.this, R.string.toastEidBlocked, Toast.LENGTH_LONG).show();
+                }
+            });
+        } else {
+            uiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(EidService.this, R.string.toastEidFailed, Toast.LENGTH_LONG).show();
+                }
+            });
         }
 
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(EidService.this);
@@ -877,18 +846,27 @@ public class EidService extends Service {
             else
                 throw new RuntimeException(e);
         } else {
+            StandardExceptionParser ep = new StandardExceptionParser(null, Collections.singleton(this.getClass().getPackage().getName())) {
+                @Override
+                protected String getDescription(Throwable cause, StackTraceElement element, String threadName) {
+                    String msg = super.getDescription(cause, element, threadName);
+                    if (cause instanceof CCIDException) {
+                        CCIDException ccidError = (CCIDException) cause;
+                        msg += String.format(" [CCID: %x %x]", ccidError.getStatus(), ccidError.getError());
+                    } else if (cause instanceof APDUException) {
+                        APDUException apduException = (APDUException) cause;
+                        msg += String.format(" [APDU: %x %x]", apduException.getSW1(), apduException.getSW2());
+                    }
+                    return msg;
+                }
+            };
+
             Tracker t = ((EidSuiteApp) this.getApplication()).getTracker();
             t.send(new HitBuilders.ExceptionBuilder()
-                    .setDescription(new StandardExceptionParser(this, null).getDescription(Thread.currentThread().getName(), root))
+                    .setDescription(ep.getDescription(Thread.currentThread().getName(), e))
                     .setFatal(false)
                     .setCustomDimension(1, getVendor())
                     .setCustomDimension(2, getProduct()).build());
-            uiHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(EidService.this, R.string.toastEidFailed, Toast.LENGTH_LONG).show();
-                }
-            });
         }
     }
 }

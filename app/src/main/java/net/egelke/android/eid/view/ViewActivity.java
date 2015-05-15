@@ -43,7 +43,7 @@ import android.widget.Toast;
 import com.google.android.gms.analytics.HitBuilders;
 import com.google.android.gms.analytics.Tracker;
 
-import net.egelke.android.eid.EidService;
+import net.egelke.android.eid.service.EidService;
 import net.egelke.android.eid.EidSuiteApp;
 import net.egelke.android.eid.R;
 import net.egelke.android.eid.belpic.FileId;
@@ -56,11 +56,7 @@ import net.egelke.android.eid.viewmodel.Certificates;
 import net.egelke.android.eid.viewmodel.Person;
 import net.egelke.android.eid.viewmodel.Photo;
 
-import org.spongycastle.jcajce.provider.asymmetric.X509;
-
-import java.io.File;
 import java.io.OutputStream;
-import java.security.cert.X509Certificate;
 
 
 public class ViewActivity extends FragmentActivity implements StartDiagDialog.Listener {

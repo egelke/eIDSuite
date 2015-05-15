@@ -1,14 +1,11 @@
 package net.egelke.android.eid.tls;
 
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
-import android.os.SystemClock;
 
-import net.egelke.android.eid.EidService;
-import net.egelke.android.eid.belpic.FileId;
+import net.egelke.android.eid.service.EidService;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.BeforeClass;
@@ -22,7 +19,6 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.security.KeyStore;
@@ -30,7 +26,6 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.Security;
 import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 
 import be.fedict.commons.eid.jca.BeIDProvider;
 

@@ -25,12 +25,12 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.UriMatcher;
 import android.database.Cursor;
-import android.database.MatrixCursor;
-import android.database.sqlite.SQLiteCursor;
 import android.net.Uri;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
+
+import net.egelke.android.eid.service.EidService;
 
 
 public class EidContentProvider extends ContentProvider {

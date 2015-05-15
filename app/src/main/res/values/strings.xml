@@ -67,10 +67,9 @@
     <string name="toastEidFailed">eID action failed</string>
     <string name="toastEidCanceled">eID action canceled</string>
     <string name="toastEidAborted">eID action aborted</string>
+    <string name="toastEidBlocked">eID card is blocked!</string>
     <string name="toastUnknownDevice">The connected device (%1$s) is not recognised</string>
     <string name="toastPinValid">PIN Valid</string>
-    <string name="toastPinCanceled">PIN verification canceled</string>
-    <string name="toastPinBlocked">eID Card Blocked!</string>
     <string name="toastSignReady">Signed document ready</string>
     <string name="toastFailedLocate">Location not determined in a timely manner</string>
     <string name="toastDownlComplete">Download complete</string>

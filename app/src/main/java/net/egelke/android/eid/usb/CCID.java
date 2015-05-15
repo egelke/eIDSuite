@@ -343,9 +343,9 @@ public class CCID implements Closeable {
         if ((rsp[7] & (byte)0x03) == 0x01 && rsp[8] == 0x00) {
             throw new UnsupportedOperationException("Command not supported by the reader");
         }
-        //TODO: check errors like PIN_TIMEOUT (0xF0) and PIN_CANCELLED (0xEF)
+        //No need to check errors like PIN_TIMEOUT (0xF0) and PIN_CANCELLED (0xEF), they aren't returned.
         if ((rsp[7] & (byte)0x03) != 0x00) {
-            throw new IOException(String.format("Command Error returned by the CCID reader: %x", rsp[8]));
+            throw new CCIDException(String.format("Command Error returned by the CCID reader: %x", rsp[8]), rsp[7], rsp[8]);
         }
 
         switch((byte)(rsp[7] & ((byte) 0xC0))) {

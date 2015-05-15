@@ -260,7 +260,7 @@ public class EidCardReader implements Closeable {
                 throw new IllegalArgumentException("Unknown key type");
         }
         if (validateResponse(rsp) != ApduSwCode.OK) {
-            throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
+            throw new APDUException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]), rsp[0], rsp[1]);
         }
 
         //Unlock the card with the pin if needed
@@ -310,11 +310,11 @@ public class EidCardReader implements Closeable {
                         data = getResponse(rsp[1]);
                         break;
                     default:
-                        throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
+                        throw new APDUException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]), rsp[0], rsp[1]);
                 }
                 break;
             default:
-                throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
+                throw new APDUException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]), rsp[0], rsp[1]);
         }
 
         return data;
@@ -361,7 +361,7 @@ public class EidCardReader implements Closeable {
                 case AuthBlocked:
                     throw new CardBlockedException("The key on the card is blocked (to many tries)");
                 default:
-                    throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
+                    throw new APDUException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]), rsp[0], rsp[1]);
             }
         }
     }
@@ -369,7 +369,7 @@ public class EidCardReader implements Closeable {
 	private void selectFile(byte[] cmd) throws IOException {
 		byte[] rsp = cardReader.transmitApdu(cmd);
         if (validateResponse(rsp) != ApduSwCode.OK) {
-            throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
+            throw new APDUException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]), rsp[0], rsp[1]);
         }
 	}
 	
@@ -396,7 +396,7 @@ public class EidCardReader implements Closeable {
                     cmd[4] = rsp[1];
                     break;
                 default:
-                    throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
+                    throw new APDUException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]), rsp[0], rsp[1]);
             }
 		} while (status == ApduSwCode.BadLengthLeCorrectIsXX
                 || (status == ApduSwCode.OK && rsp.length == 258));
@@ -416,8 +416,8 @@ public class EidCardReader implements Closeable {
                 System.arraycopy(rsp, 0, data, 0, data.length);
                 return data;
             default:
-                //TODO: BadLengthLeCorrectIsXX
-                throw new IOException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]));
+                //TODO: BadLengthLeCorrectIsXX (in case there is an invalid length provided)
+                throw new APDUException(String.format("The card returned an error: SW=%X %X", rsp[0], rsp[1]), rsp[0], rsp[1]);
         }
     }
 
@@ -453,7 +453,7 @@ public class EidCardReader implements Closeable {
             return ApduSwCode.BadLengthLeCorrectIsXX;
         } else {
             Log.w(TAG, String.format("APDU command failed: %X %X", rsp[rsp.length - 2], rsp[rsp.length - 1]));
-            throw new IOException("The card returned an error: " + rsp[rsp.length - 2]);
+            throw new APDUException("The card returned an error: " + rsp[rsp.length - 2], rsp[rsp.length - 2], rsp[rsp.length - 1]);
         }
     }
 

@@ -85,7 +85,7 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".EidService" >
+        <service android:name=".service.EidService" >
         </service>
     </application>
 

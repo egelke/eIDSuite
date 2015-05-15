@@ -61,7 +61,7 @@ import android.widget.Toast;
 import com.google.android.gms.analytics.HitBuilders;
 import com.google.android.gms.analytics.Tracker;
 
-import net.egelke.android.eid.EidService;
+import net.egelke.android.eid.service.EidService;
 import net.egelke.android.eid.EidSuiteApp;
 import net.egelke.android.eid.R;
 import net.egelke.android.eid.tls.EidSSLSocketFactory;

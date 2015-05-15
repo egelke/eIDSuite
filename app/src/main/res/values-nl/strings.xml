@@ -35,12 +35,8 @@
     <string name="notiSign">eID Service: Ondertekenen</string>
     <string name="notiSignMsg">Uw eID wordt gebruikt voor het ondertekenen</string>
 
-    <string name="toastEidFailed">De eID actie is mislukt</string>
-    <string name="toastEidCanceled">De eID actie is geannuleerd</string>
     <string name="toastUnknownDevice">Het aangesloten apparaat (%1$s) wordt niet herkend</string>
     <string name="toastPinValid">PIN geldig</string>
-    <string name="toastPinCanceled">PIN controle geannuleerd</string>
-    <string name="toastPinBlocked">eID-kaart geblokkeerd!</string>
     <string name="toastSignReady">Ondertekend document klaar</string>
 
     <string name="fragment_person">Persoon</string>
@@ -176,5 +172,8 @@
     <string name="validFromTo">Geldig vanaf %1$s tot %2$s</string>
     <string name="action_save">Opslaan</string>
     <string name="toastRequiresKitKat">Mislukt, vereist Android 4.4 (KitKat) of hoger</string>
+    <string name="toastEidBlocked">De eID kaart is geblokkeerd!</string>
+    <string name="toastEidCanceled">De eID actie is geannuleerd</string>
+    <string name="toastEidFailed">De eID actie is gefaald</string>
 
 </resources>

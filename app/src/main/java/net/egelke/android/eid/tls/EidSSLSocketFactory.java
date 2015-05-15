@@ -17,13 +17,10 @@
 */
 package net.egelke.android.eid.tls;
 
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
-import android.os.Messenger;
+import android.os.*;
 import android.util.Log;
 
-import net.egelke.android.eid.EidService;
+import net.egelke.android.eid.service.EidService;
 import net.egelke.android.eid.belpic.FileId;
 
 import org.spongycastle.crypto.tls.AlertDescription;
@@ -353,7 +350,7 @@ public class EidSSLSocketFactory extends SSLSocketFactory {
                                 try {
                                     CertificateFactory cf = CertificateFactory.getInstance("X.509");
                                     List<java.security.cert.Certificate> certs = new LinkedList<java.security.cert.Certificate>();
-                                    for(org.spongycastle.asn1.x509.Certificate cert : serverCertificate.getCertificateList()) {
+                                    for (org.spongycastle.asn1.x509.Certificate cert : serverCertificate.getCertificateList()) {
                                         certs.add(cf.generateCertificate(new ByteArrayInputStream(cert.getEncoded())));
                                     }
                                     peertCerts = certs.toArray(new java.security.cert.Certificate[0]);
@@ -377,42 +374,29 @@ public class EidSSLSocketFactory extends SSLSocketFactory {
                                             if (!TlsUtils.isTLSv12(context)) {
                                                 msg.getData().putString("DigestAlg", "RAW");
                                             }
-                                            Thread msgThread = new Thread(new Runnable() {
+                                            final HandlerThread sslThread = new HandlerThread("SslFactoryMsgThread", android.os.Process.THREAD_PRIORITY_BACKGROUND);
+                                            sslThread.start();
+
+                                            msg.replyTo = new Messenger(new Handler(sslThread.getLooper()) {
                                                 @Override
-                                                public void run() {
-                                                    Looper.prepare();
-                                                    msg.replyTo = new Messenger(new Handler(new Handler.Callback() {
-                                                        @Override
-                                                        public boolean handleMessage(Message msg) {
-                                                            switch (msg.what) {
-                                                                case EidService.AUTH_RSP:
-                                                                    switch (msg.arg1) {
-                                                                        case 0:
-                                                                            signature = msg.getData().getByteArray("Signature");
-                                                                            break;
-                                                                        default:
-                                                                            break;
-                                                                    }
-                                                                    break;
-                                                                default:
-                                                                    break;
-                                                            }
+                                                public void handleMessage(Message msg) {
+                                                    switch (msg.what) {
+                                                        case EidService.AUTH_RSP:
+                                                            signature = msg.getData().getByteArray("Signature");
+                                                            break;
+                                                        case EidService.END:
                                                             Looper.myLooper().quit();
-                                                            return true;
-                                                        }
-                                                    }));
-                                                    Looper.loop();
+                                                            break;
+                                                        default:
+                                                            break;
+                                                    }
                                                 }
                                             });
-                                            msgThread.start();
-                                            int count = 0;
-                                            while (count < 15 && (msg.replyTo == null)) {
-                                                Thread.sleep(++count * 10, 0);
-                                            }
 
                                             eidService.send(msg);
-                                            msgThread.join(1 * 60 * 1000);
-                                            if (signature == null) throw new TlsFatalAlert(AlertDescription.internal_error);
+                                            sslThread.join(1 * 60 * 1000);
+                                            if (signature == null)
+                                                throw new TlsFatalAlert(AlertDescription.internal_error);
                                             return signature;
                                         } catch (TlsFatalAlert e) {
                                             throw e;
@@ -435,51 +419,42 @@ public class EidSSLSocketFactory extends SSLSocketFactory {
                                             msg.getData().putBoolean(FileId.AUTH_CERT.name(), true);
                                             msg.getData().putBoolean(FileId.INTCA_CERT.name(), true);
                                             //msg.getData().putBoolean(FileId.ROOTCA_CERT.name(), true);
-                                            Thread msgThread = new Thread(new Runnable() {
+
+                                            final HandlerThread sslThread = new HandlerThread("SslFactoryMsgThread", android.os.Process.THREAD_PRIORITY_BACKGROUND);
+                                            sslThread.start();
+
+                                            msg.replyTo = new Messenger(new Handler(sslThread.getLooper()) {
                                                 @Override
-                                                public void run() {
-                                                    Looper.prepare();
-                                                    msg.replyTo = new Messenger(new Handler(new Handler.Callback() {
-                                                        @Override
-                                                        public boolean handleMessage(Message msg) {
-                                                            switch (msg.what) {
-                                                                case EidService.DATA_RSP:
-                                                                    FileId file = FileId.fromId(msg.arg1);
-                                                                    org.spongycastle.asn1.x509.Certificate cert = org.spongycastle.asn1.x509.Certificate.getInstance(msg.getData().getByteArray(file.name()));
-                                                                    switch (file) {
-                                                                        case AUTH_CERT:
-                                                                            certs[0] = cert;
-                                                                            break;
-                                                                        case INTCA_CERT:
-                                                                            certs[1] = cert;
-                                                                            break;
-                                                                        case ROOTCA_CERT:
-                                                                            certs[2] = cert;
-                                                                            break;
-                                                                        default:
-                                                                            return false;
-                                                                    }
+                                                public void handleMessage(Message msg) {
+                                                    switch (msg.what) {
+                                                        case EidService.DATA_RSP:
+                                                            FileId file = FileId.fromId(msg.arg1);
+                                                            org.spongycastle.asn1.x509.Certificate cert = org.spongycastle.asn1.x509.Certificate.getInstance(msg.getData().getByteArray(file.name()));
+                                                            switch (file) {
+                                                                case AUTH_CERT:
+                                                                    certs[0] = cert;
+                                                                    break;
+                                                                case INTCA_CERT:
+                                                                    certs[1] = cert;
+                                                                    break;
+                                                                case ROOTCA_CERT:
+                                                                    certs[2] = cert;
                                                                     break;
                                                                 default:
-                                                                    return false;
+                                                                    return;
                                                             }
-                                                            if (certs[0] != null && certs[1] != null) {
-                                                                Looper.myLooper().quit();
-                                                            }
-                                                            return true;
-                                                        }
-                                                    }));
-                                                    Looper.loop();
+                                                            break;
+                                                        case EidService.END:
+                                                            Looper.myLooper().quit();
+                                                            break;
+                                                        default:
+                                                            return;
+                                                    }
                                                 }
                                             });
-                                            msgThread.start();
-                                            int count = 0;
-                                            while (count < 15 && (msg.replyTo == null)) {
-                                                Thread.sleep(++count * 10, 0);
-                                            }
 
                                             eidService.send(msg);
-                                            msgThread.join(10 * 60 * 1000);
+                                            sslThread.join(10 * 60 * 1000);
                                             if (certs[0] == null || certs[1] == null) {
                                                 Log.e(TAG, "Failed to obtain the TLS client certificates in a timely manner");
                                                 return null;
