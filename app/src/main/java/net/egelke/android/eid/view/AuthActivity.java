@@ -17,6 +17,7 @@
 */
 package net.egelke.android.eid.view;
 
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
@@ -35,8 +36,11 @@ import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.net.http.SslError;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
@@ -140,10 +144,15 @@ public class AuthActivity extends Activity implements GoDialog.Listener {
         webview.setDownloadListener(new MyDownloadListener());
         setContentView(webview);
 
+        CookieManager.setAcceptFileSchemeCookies(true);
+        CookieManager.getInstance().setAcceptCookie(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            CookieManager.getInstance().setAcceptThirdPartyCookies(webview, true);
+        }
+
         getActionBar().setDisplayHomeAsUpEnabled(true);
         registerReceiver(receiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
 
-        //TODO:Load last URL from savedInstanceState
         Intent intent = getIntent();
         if (intent.getAction() == Intent.ACTION_VIEW) {
             url = intent.getData().toString();
@@ -165,9 +174,12 @@ public class AuthActivity extends Activity implements GoDialog.Listener {
         //setup service
         bindService(new Intent(this, EidService.class), mConnection, Context.BIND_AUTO_CREATE);
 
+        //new client
         wvc = new MyWebViewClient();
         wvc.start();
         webview.setWebViewClient(wvc);
+
+        webview.freeMemory();
     }
 
     @Override
@@ -204,40 +216,10 @@ public class AuthActivity extends Activity implements GoDialog.Listener {
 
     private class MyWebViewClient extends WebViewClient {
 
-        private class CookieThread extends Thread {
-
-            public CookieThread() {
-                setName("CookieThread");
-            }
-
-            public void run() {
-                Looper.prepare();
-                cookieMsngr = new Messenger(new android.os.Handler(new android.os.Handler.Callback() {
-                    @Override
-                    public boolean handleMessage(Message msg) {
-                        if (msg.what < 0) {
-                            Looper.myLooper().quit();
-                            return true;
-                        }
-
-                        if (msg.arg1 >= 0) {
-                            iamCookies[msg.arg1] = CookieManager.getInstance().getCookie(iamUrls[msg.arg1]);
-                        } else {
-                            for (int i = 0; i < iamCookies.length; i++) {
-                                iamCookies[i] = CookieManager.getInstance().getCookie(iamUrls[i]);
-                            }
-                        }
-                        return true;
-                    }
-                }));
-                Looper.loop();
-            }
-        }
-
         private final String[] iamUrls;
         private final String[] iamCookies;
 
-        private Thread cookieThread;
+        private HandlerThread cookieThread;
         private Messenger cookieMsngr;
         private EidSSLSocketFactory factory;
 
@@ -251,12 +233,27 @@ public class AuthActivity extends Activity implements GoDialog.Listener {
         }
 
         public void start() {
-            cookieThread = new CookieThread();
+            cookieThread = new HandlerThread("AuthActivityMsgThread", android.os.Process.THREAD_PRIORITY_BACKGROUND);
             cookieThread.start();
+
+            cookieMsngr = new Messenger(new Handler(cookieThread.getLooper()) {
+                @Override
+                public void handleMessage(Message msg) {
+                    CookieManager.getInstance().removeExpiredCookie();
+
+                    if (msg.arg1 >= 0) {
+                        iamCookies[msg.arg1] = CookieManager.getInstance().getCookie(iamUrls[msg.arg1]);
+                    } else {
+                        for (int i = 0; i < iamCookies.length; i++) {
+                            iamCookies[i] = CookieManager.getInstance().getCookie(iamUrls[i]);
+                        }
+                    }
+                }
+            });
         }
 
         public void stop() throws RemoteException {
-            cookieMsngr.send(Message.obtain(null, -1, 0, 0));
+            cookieThread.quit();
         }
 
         @Override
@@ -287,7 +284,7 @@ public class AuthActivity extends Activity implements GoDialog.Listener {
                 if (iam != -1) {
                     if (factory == null) {
                         int count = 0;
-                        while (count++ < 10 && (mEidService == null || cookieMsngr == null)) {
+                        while (count++ < 10 && mEidService == null) {
                             SystemClock.sleep(100 * count);
                         }
                         factory = new EidSSLSocketFactory(mEidService);
@@ -353,8 +350,6 @@ public class AuthActivity extends Activity implements GoDialog.Listener {
 
     private class MyDownloadListener implements DownloadListener {
 
-
-
         @Override
         public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
             Log.d(TAG, String.format("Download: %s [mimeType=%s, contentDisposition=%s]", url, mimetype, contentDisposition));
@@ -389,9 +384,11 @@ public class AuthActivity extends Activity implements GoDialog.Listener {
 
         switch (item.getItemId()) {
             case android.R.id.home:
+                webview.freeMemory();
                 webview.loadUrl(sharedPref.getString("pref_auth_home", HOME));
                 return true;
             case R.id.action_search:
+                webview.freeMemory();
                 webview.loadUrl(sharedPref.getString("pref_auth_search", SEARCH));
                 return true;
             case R.id.action_go:
@@ -402,7 +399,12 @@ public class AuthActivity extends Activity implements GoDialog.Listener {
                 go.show(getFragmentManager(), "Go");
                 return true;
             case R.id.action_refresh:
+                webview.freeMemory();
                 webview.reload();
+                return true;
+            case R.id.action_clean:
+                CookieManager.getInstance().removeAllCookie();
+                webview.clearCache(true);
                 return true;
             case R.id.action_downloads:
                 Intent i = new Intent();
@@ -433,7 +435,10 @@ public class AuthActivity extends Activity implements GoDialog.Listener {
 
     @Override
     public void onGo(String url) {
-        if (webview != null) webview.loadUrl(url);
+        if (webview != null) {
+            webview.freeMemory();
+            webview.loadUrl(url);
+        }
     }
 
     @Override

@@ -175,5 +175,6 @@
     <string name="toastEidBlocked">De eID kaart is geblokkeerd!</string>
     <string name="toastEidCanceled">De eID actie is geannuleerd</string>
     <string name="toastEidFailed">De eID actie is gefaald</string>
+    <string name="action_clean">Verwijder cookies</string>
 
 </resources>
