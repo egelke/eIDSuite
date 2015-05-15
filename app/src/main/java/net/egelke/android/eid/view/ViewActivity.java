@@ -17,13 +17,17 @@
 */
 package net.egelke.android.eid.view;
 
+import android.app.DownloadManager;
+import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
@@ -41,6 +45,7 @@ import android.view.MenuItem;
 import android.widget.Toast;
 
 import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.StandardExceptionParser;
 import com.google.android.gms.analytics.Tracker;
 
 import net.egelke.android.eid.service.EidService;
@@ -56,19 +61,21 @@ import net.egelke.android.eid.viewmodel.Certificates;
 import net.egelke.android.eid.viewmodel.Person;
 import net.egelke.android.eid.viewmodel.Photo;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.util.Objects;
 
 
 public class ViewActivity extends FragmentActivity implements StartDiagDialog.Listener {
 
     private static final String TAG = "net.egelke.android.eid";
 
-    private static final int SAVE_REQUEST_CODE = 1;
-
-    private class SaveTask extends AsyncTask<Uri, Void, Exception> {
+    private class SaveTask extends AsyncTask<Uri, Void, Object> {
 
         @Override
-        protected Exception doInBackground(Uri... uris) {
+        protected Object doInBackground(Uri... uris) {
             try {
                 EidSuiteApp app = (EidSuiteApp) getApplication();
                 Person personView = app.getViewObject(Person.class);
@@ -76,7 +83,7 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                 Photo photoView = app.getViewObject(Photo.class);
                 Certificates certsView = app.getViewObject(Certificates.class);
 
-                OutputStream outputStream = getContentResolver().openOutputStream(uris[0]);
+                OutputStream outputStream = new FileOutputStream(uris[0].getPath());
                 try {
                     Serializer writer = new Serializer(outputStream);
                     writer.setIdentity(personView.getIdentity());
@@ -102,22 +109,39 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                         }
                     }
                     writer.write();
-                    return null;
+                    return uris[0];
                 } finally {
                     outputStream.close();
                 }
             } catch (Exception e) {
+                //TODO:log error (also on other places)
                 Log.e("net.egelke.android.eid", "Writing the eid files failed", e);
                 return e;
             }
         }
 
         @Override
-        protected void onPostExecute(Exception e) {
-            if (e != null) {
+        protected void onPostExecute(Object o) {
+            //TODO:correct toast test
+            if (o instanceof Exception) {
                 Toast.makeText(getApplicationContext(), "Failed to save the eID file", Toast.LENGTH_LONG).show();
-            } else {
-                Toast.makeText(getApplicationContext(), "Saved the eID file", Toast.LENGTH_SHORT).show();
+
+                Tracker t = ((EidSuiteApp) ViewActivity.this.getApplication()).getTracker();
+                t.send(new HitBuilders.ExceptionBuilder()
+                        .setDescription(new StandardExceptionParser(ViewActivity.this, null).getDescription(Thread.currentThread().getName(), (Exception) o))
+                        .setFatal(false).build());
+            } else if (o instanceof Uri){
+                Uri uri = (Uri) o;
+
+                Intent sendIntent = new Intent();
+                sendIntent.setAction(Intent.ACTION_SEND);
+                sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
+                sendIntent.setType("text/xml");
+                try {
+                    startActivity(sendIntent);
+                } catch (ActivityNotFoundException ex) {
+                    Toast.makeText(ViewActivity.this, R.string.toastNoActivityFound, Toast.LENGTH_SHORT).show();
+                }
             }
         }
     }
@@ -378,7 +402,7 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
     public boolean onOptionsItemSelected(MenuItem item) {
         try {
             if (mEidService == null) {
-                //TODO:toast!
+                //TODO:migrate eid service to intent-service
                 return false;
             }
 
@@ -428,38 +452,34 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                 case R.id.action_save:
                     Identity id = personView.getIdentity();
                     if (id == null) return true;
-
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-                        intent.addCategory(Intent.CATEGORY_OPENABLE);
-                        intent.setType("*/*");
-                        intent.putExtra(Intent.EXTRA_TITLE,String.format("%s.eid", id.nationalNumber));
-                        startActivityForResult(intent, SAVE_REQUEST_CODE);
-                    } else {
-                        Toast.makeText(this, R.string.toastRequiresKitKat, Toast.LENGTH_LONG).show();
+                    File downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                    if (!downloads.exists()) {
+                        downloads.mkdir();
                     }
+                    (new SaveTask()).execute(Uri.withAppendedPath(Uri.fromFile(downloads), String.format("%s.eid", id.nationalNumber)));
                     return true;
                 case R.id.action_settings:
                     Intent intent = new Intent();
                     intent.setClass(this, SettingsActivity.class);
                     startActivity(intent);
                     return true;
+                case R.id.action_downloads:
+                    Intent i = new Intent();
+                    i.setAction(DownloadManager.ACTION_VIEW_DOWNLOADS);
+                    startActivity(i);
+                    return true;
                 default:
                     return false;
             }
         } catch (Exception e) {
-            //TODO: toast
+            Tracker t = ((EidSuiteApp) this.getApplication()).getTracker();
+            t.send(new HitBuilders.ExceptionBuilder()
+                    .setDescription(new StandardExceptionParser(this, null).getDescription(Thread.currentThread().getName(), e))
+                    .setFatal(false).build());
             Log.e(TAG, "Failed to send message to eID Service", e);
-            return true;
-        }
-    }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == SAVE_REQUEST_CODE) {
-            if (resultCode == RESULT_OK) {
-                (new SaveTask()).execute(data.getData());
-            }
+            Toast.makeText(this, R.string.toastFailed, Toast.LENGTH_LONG).show();
+            return true;
         }
     }
 
@@ -470,7 +490,11 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
             msg.replyTo = mEidServiceResponse;
             mEidService.send(msg);
         } catch (Exception e) {
-            //TODO:toast.
+            Tracker t = ((EidSuiteApp) this.getApplication()).getTracker();
+            t.send(new HitBuilders.ExceptionBuilder()
+                    .setDescription(new StandardExceptionParser(this, null).getDescription(Thread.currentThread().getName(), e))
+                    .setFatal(false).build());
+            Toast.makeText(this, R.string.toastFailed, Toast.LENGTH_LONG).show();
         }
     }
 

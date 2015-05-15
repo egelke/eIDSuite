@@ -66,6 +66,7 @@ import net.egelke.android.eid.viewmodel.ViewObject;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -80,17 +81,16 @@ public class SignActivity extends Activity implements UpdateListener {
     private static final String TAG = "net.egelke.android.eid";
     private static final String ACTION_LOCATED = "net.egelke.android.eid.LOCATED";
     private static final int OPEN_REQUEST_CODE = 1;
-    private static final int SAVE_REQUEST_CODE = 2;
 
     private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     private class SaveResult extends AsyncTask<Uri, Void, Uri> {
 
         @Override
-        protected Uri doInBackground(Uri... params) {
+        protected Uri doInBackground(Uri... uris) {
             try {
                 InputStream is = new FileInputStream(tmp);
-                OutputStream os = getContentResolver().openOutputStream(params[0], "w");
+                OutputStream os =  new FileOutputStream(uris[0].getPath());
 
                 try {
                     int count;
@@ -109,14 +109,24 @@ public class SignActivity extends Activity implements UpdateListener {
             } catch (IOException ioe) {
                 Log.e(TAG, "Failed to copy file", ioe);
             }
-            return params[0];
+            return uris[0];
         }
 
         @Override
         protected void onPostExecute(Uri file) {
             p.startUpdate();
             p.setFile(file);
-            Toast.makeText(SignActivity.this, SignActivity.this.getString(R.string.toastSignReady), Toast.LENGTH_SHORT).show();
+
+            Intent sendIntent = new Intent();
+            sendIntent.setAction(Intent.ACTION_SEND);
+            sendIntent.putExtra(Intent.EXTRA_STREAM, file);
+            sendIntent.setType("text/xml");
+            try {
+                startActivity(sendIntent);
+            } catch (ActivityNotFoundException ex) {
+                Toast.makeText(SignActivity.this, R.string.toastNoActivityFound, Toast.LENGTH_SHORT).show();
+            }
+            //Toast.makeText(SignActivity.this, SignActivity.this.getString(R.string.toastSignReady), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -162,20 +172,9 @@ public class SignActivity extends Activity implements UpdateListener {
                 case EidService.SIGN_RSP:
                     tmp = new File(msg.getData().getString("output"));
                     String filename = new File(tmp.getPath()).getName();
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
-                        File dstFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename);
-                        (new SaveResult()).execute(Uri.fromFile(dstFile));
-                    } else {
-                        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-                        intent.addCategory(Intent.CATEGORY_OPENABLE);
-                        intent.setType("application/pdf");
-                        intent.putExtra(Intent.EXTRA_TITLE, file.getText().toString());
-                        try {
-                            startActivityForResult(intent, SAVE_REQUEST_CODE);
-                        } catch (ActivityNotFoundException ex) {
-                            Toast.makeText(SignActivity.this, R.string.toastNoDocMngr, Toast.LENGTH_SHORT).show();
-                        }
-                    }
+
+                    File dstFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename);
+                    (new SaveResult()).execute(Uri.fromFile(dstFile));
                     return true;
                 default:
                     return false;
@@ -224,18 +223,13 @@ public class SignActivity extends Activity implements UpdateListener {
         select.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent;
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
-                    intent = new Intent(Intent.ACTION_GET_CONTENT);
-                } else {
-                    intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                }
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                 intent.setType("application/pdf");
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
                 try {
                     startActivityForResult(intent, OPEN_REQUEST_CODE);
                 } catch (ActivityNotFoundException ex) {
-                    Toast.makeText(SignActivity.this, R.string.toastNoDocMngr, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(SignActivity.this, R.string.toastNoActivityFound, Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -372,13 +366,6 @@ public class SignActivity extends Activity implements UpdateListener {
                 if (resultCode == Activity.RESULT_OK) {
                     p.startUpdate();
                     p.setFile(data.getData());
-                } else {
-                    Toast.makeText(this, R.string.toastFileCanceled, Toast.LENGTH_LONG).show();
-                }
-                break;
-            case SAVE_REQUEST_CODE:
-                if (resultCode == Activity.RESULT_OK) {
-                    (new SaveResult()).execute(data.getData());
                 } else {
                     Toast.makeText(this, R.string.toastFileCanceled, Toast.LENGTH_LONG).show();
                 }

@@ -132,6 +132,7 @@ public class Serializer {
 
         push.endTag(null, "eid");
         push.endDocument();
+        push.flush();
     }
 
     public void setIdentity(Identity value) {

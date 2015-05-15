@@ -16,11 +16,11 @@
     <string name="action_close">Close</string>
     <string name="action_refresh">Refresh</string>
     <string name="action_downloads">Downloads</string>
-    <string name="action_locate">Update Location</string>
+    <string name="action_locate">Update location</string>
     <string name="action_diag">Diagnose</string>
-    <string name="action_go">Goto Page</string>
+    <string name="action_go">Goto page</string>
     <string name="action_search">Search</string>
-    <string name="action_save">Save</string>
+    <string name="action_save">Save &amp; share</string>
     <string name="action_clean">Clear cookies</string>
 
     <string name="pref_fail">Fail on next error</string>
@@ -65,6 +65,7 @@
     <string name="notiSign">eID Service: Signing</string>
     <string name="notiSignMsg">Your eID is being used to sign</string>
 
+    <string name="toastFailed">Action failed</string>
     <string name="toastEidFailed">eID action failed</string>
     <string name="toastEidCanceled">eID action canceled</string>
     <string name="toastEidAborted">eID action aborted</string>
@@ -79,7 +80,7 @@
     <string name="toastDiagNoCard">No card detected! Ensure your card is properly inserted and try again.</string>
     <string name="toastDiagSuccess">Diagnose Succeeded! Good to go.</string>
     <string name="toastNoMailClient">No mail client found, please install one (e.g. Email)</string>
-    <string name="toastNoDocMngr">No document manager found, please install one</string>
+    <string name="toastNoActivityFound">No activity for the intended action (e.g. share)</string>
     <string name="toastNoPdfViewer">No PDF viewer found, please install one (e.g google drive)</string>
     <string name="toastNoNetwork">Connection required!</string>
     <string name="toastFileCanceled">File action canceled</string>

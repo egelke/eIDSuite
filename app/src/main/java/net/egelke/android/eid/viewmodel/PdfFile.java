@@ -160,6 +160,7 @@ public class PdfFile extends ViewObject {
             (new Process()).execute(file);
         } else {
             signatures.clear();
+            endUpdate();
         }
     }
 

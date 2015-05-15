@@ -142,7 +142,7 @@
     <string name="toastDiagNoDevices">Diagnosticeren mislukt! Zorg ervoor dat uw lezer is aangesloten (en verleen er toegang toe).</string>
     <string name="toastDiagSuccess">Diagnosticeren succesvol! U kunt aan de slag.</string>
     <string name="toastDiagNoCard">Geen kaart gedetecteerd! Zorg ervoor dat uw kaart juist is geplaatst en probeer het opnieuw.</string>
-    <string name="toastNoDocMngr">Geen document manager gevonden, installeer er een</string>
+    <string name="toastNoActivityFound">Geen activity voor de bedoelde actie (bv Delen)</string>
     <string name="toastNoMailClient">Geen mail client gevonden, installeer er een (bv Email)</string>
     <string name="toastNoPdfViewer">Geen PDF-viewer gevonden, installeer er en (bv Google Drive)</string>
     <string name="pinRetries">%1$d resterende pogingen</string>
@@ -161,7 +161,7 @@
     </string-array>
     <string name="toastEidAborted">De eID actie is afgebroken</string>
     <string name="toastFileCanceled">De bestands acties is geannuleerd</string>
-    <string name="action_go">Ga naar Pagina</string>
+    <string name="action_go">Ga naar pagina</string>
     <string name="action_search">Zoek</string>
     <string name="pref_auth_home">Startpagina</string>
     <string name="pref_auth_home_summ">Stel de startpagina in om naar toe te gaan wanneer u op de home-knop drukt</string>
@@ -170,11 +170,12 @@
     <string name="toastInvalidUrl">Ongeldige URL</string>
     <string name="fragment_certs">Certificaten</string>
     <string name="validFromTo">Geldig vanaf %1$s tot %2$s</string>
-    <string name="action_save">Opslaan</string>
+    <string name="action_save">Sla op &amp; deel</string>
     <string name="toastRequiresKitKat">Mislukt, vereist Android 4.4 (KitKat) of hoger</string>
     <string name="toastEidBlocked">De eID kaart is geblokkeerd!</string>
     <string name="toastEidCanceled">De eID actie is geannuleerd</string>
     <string name="toastEidFailed">De eID actie is gefaald</string>
     <string name="action_clean">Verwijder cookies</string>
+    <string name="toastFailed">De actie is gefaald</string>
 
 </resources>
