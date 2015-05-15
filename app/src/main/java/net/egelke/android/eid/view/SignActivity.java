@@ -119,20 +119,12 @@ public class SignActivity extends Activity implements UpdateListener {
                     setProgressBarIndeterminateVisibility(false);
                     return true;
                 case EidService.SIGN_RSP:
-                    tmp = new File(msg.getData().getString("output"));
+                    //tmp = new File(msg.getData().getString("output"));
 
                     p.startUpdate();
                     p.setFile(null);
 
-                    Intent sendIntent = new Intent();
-                    sendIntent.setAction(Intent.ACTION_SEND);
-                    sendIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(tmp));
-                    sendIntent.setType("application/pdf");
-                    try {
-                        startActivity(sendIntent);
-                    } catch (ActivityNotFoundException ex) {
-                        Toast.makeText(SignActivity.this, R.string.toastNoActivityFound, Toast.LENGTH_SHORT).show();
-                    }
+
                     return true;
                 default:
                     return false;
