@@ -40,6 +40,7 @@ public class EidSuiteApp extends Application {
     public synchronized Tracker getTracker() {
        if (mTracker == null) {
            GoogleAnalytics analytics = GoogleAnalytics.getInstance(this);
+           analytics.setDryRun(BuildConfig.DEBUG);
            mTracker = analytics.newTracker(R.xml.app_tracker);
        }
        return mTracker;
