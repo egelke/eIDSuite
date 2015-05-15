@@ -275,6 +275,7 @@ public class AuthActivity extends Activity implements GoDialog.Listener {
 
         @Override
         public WebResourceResponse shouldInterceptRequest(final WebView view, final String url) {
+            Log.v(TAG, String.format("should Intercept: %s", url));
             int iam = -1;
             for (int i = 0; i < iamUrls.length; i++) {
                 if (url.startsWith(iamUrls[i])) {
