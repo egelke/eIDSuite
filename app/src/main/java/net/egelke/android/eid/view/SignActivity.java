@@ -275,11 +275,6 @@ public class SignActivity extends Activity implements UpdateListener {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.action_downloads:
-                Intent i = new Intent();
-                i.setAction(DownloadManager.ACTION_VIEW_DOWNLOADS);
-                startActivity(i);
-                return true;
             case R.id.action_locate:
                 l.startUpdate();
                 setProgressBarIndeterminateVisibility(true);
@@ -334,8 +329,8 @@ public class SignActivity extends Activity implements UpdateListener {
 
         if (value == p) {
             if (value.isUpdating()) {
-                view.setEnabled(true);
-                sign.setEnabled(true);
+                view.setEnabled(false);
+                sign.setEnabled(false);
             } else {
                 view.setEnabled(p.hasFile());
                 sign.setEnabled(p.hasFile());

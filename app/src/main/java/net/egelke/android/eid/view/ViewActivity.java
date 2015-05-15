@@ -475,11 +475,6 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                     intent.setClass(this, SettingsActivity.class);
                     startActivity(intent);
                     return true;
-                case R.id.action_downloads:
-                    Intent i = new Intent();
-                    i.setAction(DownloadManager.ACTION_VIEW_DOWNLOADS);
-                    startActivity(i);
-                    return true;
                 default:
                     return false;
             }
