@@ -20,7 +20,7 @@
     <string name="action_diag">Diagnose</string>
     <string name="action_go">Goto page</string>
     <string name="action_search">Search</string>
-    <string name="action_save">Save &amp; share</string>
+    <string name="action_save">Save</string>
     <string name="action_clean">Clear cookies</string>
 
     <string name="pref_fail">Fail on next error</string>
@@ -137,7 +137,7 @@
     <!--string name="signedField">\"%1$s\" (signed by %3$s) on page %2$s</string-->
     <string name="select">Select</string>
     <string name="view">View</string>
-    <string name="sign">Sign &amp; share</string>
+    <string name="sign">Sign</string>
 
     <string name="status_whiteCane">white cane</string>
     <string name="status_yellowCane">yellow cane</string>

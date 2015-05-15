@@ -133,15 +133,22 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
             } else if (o instanceof Uri){
                 Uri uri = (Uri) o;
 
-                Intent sendIntent = new Intent();
-                sendIntent.setAction(Intent.ACTION_SEND);
-                sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
-                sendIntent.setType("text/xml");
-                try {
-                    startActivity(sendIntent);
-                } catch (ActivityNotFoundException ex) {
-                    Toast.makeText(ViewActivity.this, R.string.toastNoActivityFound, Toast.LENGTH_SHORT).show();
-                }
+                MediaScannerConnection.scanFile(ViewActivity.this, new String[]{uri.getPath().toString()}, new String[]{"text/xml"}, new MediaScannerConnection.OnScanCompletedListener() {
+                    @Override
+                    public void onScanCompleted(String path, Uri uri) {
+                        if (uri != null) {
+                            Intent sendIntent = new Intent();
+                            sendIntent.setAction(Intent.ACTION_SEND);
+                            sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
+                            sendIntent.setType("text/xml");
+                            try {
+                                startActivity(sendIntent);
+                            } catch (ActivityNotFoundException ex) {
+                                Toast.makeText(ViewActivity.this, R.string.toastNoActivityFound, Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    }
+                });
             }
         }
     }

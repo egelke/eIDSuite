@@ -30,6 +30,7 @@ import android.content.SharedPreferences;
 import android.hardware.usb.UsbConstants;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
+import android.media.MediaScannerConnection;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -78,6 +79,8 @@ import net.egelke.android.eid.view.SettingsActivity;
 import org.spongycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
@@ -660,11 +663,13 @@ public class EidService extends Service {
             SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(EidService.this);
             String prefix = sharedPref.getString(SettingsActivity.KEY_PREF_SIGN_PREFIX, getString(R.string.pref_sign_prefix_default));
 
-            File tmp = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), prefix + name);
+            File tmp = File.createTempFile("eid", ".pdf", getCacheDir());
+            File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), prefix + name);
+            FileOutputStream fos = new FileOutputStream(file);
 
             //Prepare sign
             PdfReader reader = new PdfReader(getContentResolver().openInputStream(uri));
-            PdfStamper stamper = PdfStamper.createSignature(reader, null, '\0', tmp, true);
+            PdfStamper stamper = PdfStamper.createSignature(reader, fos, '\0', tmp, true);
             PdfSignatureAppearance appearance = stamper.getSignatureAppearance();
             if (reason != null && reason.length() > 0) appearance.setReason(reason);
             if (location != null && location.length() > 0) appearance.setLocation(location);
@@ -713,8 +718,19 @@ public class EidService extends Service {
             //finish
             reader.close();
             stamper.close();
+            fos.close();
+
+            //make the file available
+            MediaScannerConnection.scanFile(this, new String[]{file.toString()}, null, new MediaScannerConnection.OnScanCompletedListener() {
+                @Override
+                public void onScanCompleted(String path, Uri uri) {
+
+                }
+            });
+
+            //send the result
             Message rsp = Message.obtain(null, SIGN_RSP, 0, 0);
-            rsp.getData().putString("output", tmp.getAbsolutePath());
+            rsp.getData().putString("output", file.getAbsolutePath());
             msg.replyTo.send(rsp);
         }
     }

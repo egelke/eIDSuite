@@ -10,6 +10,7 @@
             android:defaultValue="false" />
         <!-- TODO: add privacy setting -->
     </PreferenceCategory>
+    <!--TODO: Add share settings -->
     <PreferenceCategory
         android:title="@string/title_activity_sign"
         android:key="pref_cat_sign">

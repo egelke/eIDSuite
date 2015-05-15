@@ -77,7 +77,7 @@
     <string name="invSign">Onzichtbare handtekening</string>
     <string name="select">kiezen</string>
     <string name="view">Toon</string>
-    <string name="sign">Teken &amp; deel</string>
+    <string name="sign">Teken</string>
 
     <string name="status_whiteCane">witte stok</string>
     <string name="status_yellowCane">gele stok</string>
@@ -170,7 +170,7 @@
     <string name="toastInvalidUrl">Ongeldige URL</string>
     <string name="fragment_certs">Certificaten</string>
     <string name="validFromTo">Geldig vanaf %1$s tot %2$s</string>
-    <string name="action_save">Sla op &amp; deel</string>
+    <string name="action_save">Sla op</string>
     <string name="toastRequiresKitKat">Mislukt, vereist Android 4.4 (KitKat) of hoger</string>
     <string name="toastEidBlocked">De eID kaart is geblokkeerd!</string>
     <string name="toastEidCanceled">De eID actie is geannuleerd</string>
