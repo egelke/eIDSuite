@@ -25,6 +25,8 @@
 
     <string name="pref_fail">Fail on next error</string>
     <string name="pref_fail_summ">Fail the app on an eID error to allow the app owner to investigate the issue.  This setting is resets after the first eID error.</string>
+    <string name="pref_view_share">Share after save</string>
+    <string name="pref_view_share_summ">Automatically share the eID file after it is saved in Downloads</string>
     <string name="pref_sign_network">Online signature</string>
     <string name="pref_sign_network_summ">Add an official (trusted) time and validation information when signing a document depending on the network status.</string>
     <string-array name="pref_sign_network_entries">
@@ -41,6 +43,8 @@
     <string name="pref_sign_prefix">Signed file prefix</string>
     <string name="pref_sign_prefix_summ">The prefix to add to the file name of the signed file</string>
     <string name="pref_sign_prefix_default">signed_</string>
+    <string name="pref_sign_share">Share after sign</string>
+    <string name="pref_sign_share_summ">Automatically share the signed file after it is saved in Downloads</string>
     <string name="pref_auth_home">Home page</string>
     <string name="pref_auth_home_summ">Set the home page to go to when pushing the home button</string>
     <string name="pref_auth_search">Search page</string>
@@ -75,7 +79,9 @@
     <string name="toastEidBlocked">eID card is blocked!</string>
     <string name="toastUnknownDevice">The connected device (%1$s) is not recognised</string>
     <string name="toastPinValid">PIN Valid</string>
-    <string name="toastSignReady">Signed document ready</string>
+    <string name="toastSaved">eID saved</string>
+    <string name="toastSaveFailed">eID save failed</string>
+    <string name="toastSigned">Document signed</string>
     <string name="toastFailedLocate">Location not determined in a timely manner</string>
     <string name="toastDownlComplete">Download complete</string>
     <string name="toastDownlFailed">Download failed</string>

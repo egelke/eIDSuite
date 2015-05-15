@@ -121,9 +121,9 @@ public class SignActivity extends Activity implements UpdateListener {
                 case EidService.SIGN_RSP:
                     //tmp = new File(msg.getData().getString("output"));
 
+                    Toast.makeText(getApplicationContext(), R.string.toastSigned, Toast.LENGTH_SHORT).show();
                     p.startUpdate();
                     p.setFile(null);
-
 
                     return true;
                 default:

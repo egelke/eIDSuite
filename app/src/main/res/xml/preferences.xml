@@ -10,7 +10,15 @@
             android:defaultValue="false" />
         <!-- TODO: add privacy setting -->
     </PreferenceCategory>
-    <!--TODO: Add share settings -->
+    <PreferenceCategory
+        android:title="@string/title_activity_view"
+        android:key="pref_cat_view">
+        <CheckBoxPreference
+            android:key="pref_view_share"
+            android:title="@string/pref_view_share"
+            android:summary="@string/pref_view_share_summ"
+            android:defaultValue="true" />
+    </PreferenceCategory>
     <PreferenceCategory
         android:title="@string/title_activity_sign"
         android:key="pref_cat_sign">
@@ -26,6 +34,11 @@
             android:title="@string/pref_sign_prefix"
             android:summary="@string/pref_sign_prefix_summ"
             android:defaultValue="@string/pref_sign_prefix_default" />
+        <CheckBoxPreference
+            android:key="pref_sign_share"
+            android:title="@string/pref_sign_share"
+            android:summary="@string/pref_sign_share_summ"
+            android:defaultValue="true" />
     </PreferenceCategory>
     <PreferenceCategory
         android:title="@string/title_activity_auth"

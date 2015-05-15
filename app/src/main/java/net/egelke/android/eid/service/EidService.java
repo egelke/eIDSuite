@@ -663,6 +663,7 @@ public class EidService extends Service {
         if ("application/pdf".equals(mimeType)) {
             SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(EidService.this);
             String prefix = sharedPref.getString(SettingsActivity.KEY_PREF_SIGN_PREFIX, getString(R.string.pref_sign_prefix_default));
+            final boolean share = sharedPref.getBoolean(SettingsActivity.KEY_PREF_SIGN_SHARE, true);
 
             File tmp = File.createTempFile("eid", ".pdf", getCacheDir());
             File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), prefix + name);
@@ -725,15 +726,17 @@ public class EidService extends Service {
             MediaScannerConnection.scanFile(this, new String[]{file.toString()}, null, new MediaScannerConnection.OnScanCompletedListener() {
                 @Override
                 public void onScanCompleted(String path, Uri uri) {
-                    Intent sendIntent = new Intent();
-                    sendIntent.setAction(Intent.ACTION_SEND);
-                    sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
-                    sendIntent.setType("application/pdf");
-                    sendIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    try {
-                        startActivity(sendIntent);
-                    } catch (ActivityNotFoundException ex) {
-                        Toast.makeText(EidService.this, R.string.toastNoActivityFound, Toast.LENGTH_SHORT).show();
+                    if (uri != null && share) {
+                        Intent sendIntent = new Intent();
+                        sendIntent.setAction(Intent.ACTION_SEND);
+                        sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
+                        sendIntent.setType("application/pdf");
+                        sendIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        try {
+                            startActivity(sendIntent);
+                        } catch (ActivityNotFoundException ex) {
+                            Toast.makeText(EidService.this, R.string.toastNoActivityFound, Toast.LENGTH_SHORT).show();
+                        }
                     }
                 }
             });

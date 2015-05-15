@@ -23,6 +23,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -33,6 +34,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
@@ -42,6 +44,7 @@ import android.support.v4.view.ViewPager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Toast;
 
 import com.google.android.gms.analytics.HitBuilders;
@@ -122,21 +125,23 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
 
         @Override
         protected void onPostExecute(Object o) {
-            //TODO:correct toast test
             if (o instanceof Exception) {
-                Toast.makeText(getApplicationContext(), "Failed to save the eID file", Toast.LENGTH_LONG).show();
+                Toast.makeText(getApplicationContext(), R.string.toastSaveFailed, Toast.LENGTH_LONG).show();
 
                 Tracker t = ((EidSuiteApp) ViewActivity.this.getApplication()).getTracker();
                 t.send(new HitBuilders.ExceptionBuilder()
                         .setDescription(new StandardExceptionParser(ViewActivity.this, null).getDescription(Thread.currentThread().getName(), (Exception) o))
                         .setFatal(false).build());
             } else if (o instanceof Uri){
+                Toast.makeText(getApplicationContext(), R.string.toastSaved, Toast.LENGTH_SHORT).show();
                 Uri uri = (Uri) o;
 
                 MediaScannerConnection.scanFile(ViewActivity.this, new String[]{uri.getPath().toString()}, new String[]{"text/xml"}, new MediaScannerConnection.OnScanCompletedListener() {
                     @Override
                     public void onScanCompleted(String path, Uri uri) {
-                        if (uri != null) {
+                        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(ViewActivity.this);
+                        boolean share = sharedPref.getBoolean(SettingsActivity.KEY_PREF_VIEW_SHARE, true);
+                        if (uri != null && share) {
                             Intent sendIntent = new Intent();
                             sendIntent.setAction(Intent.ACTION_SEND);
                             sendIntent.putExtra(Intent.EXTRA_STREAM, uri);
