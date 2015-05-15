@@ -650,14 +650,17 @@ public class EidService extends Service {
                 .setCustomDimension(2, getProduct()).build());
 
         Uri uri = msg.getData().getParcelable("input");
+        String name = msg.getData().getString("name");
         String reason = msg.getData().getString("reason");
         String location = msg.getData().getString("location");
         String sign = msg.getData().getString("sign");
 
-        File file = new File(uri.getPath());
         String mimeType = getContentResolver().getType(uri);
         if ("application/pdf".equals(mimeType)) {
-            File tmp = new File(getCacheDir().getAbsolutePath() + File.separator + file.getName());
+            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(EidService.this);
+            String prefix = sharedPref.getString(SettingsActivity.KEY_PREF_SIGN_PREFIX, getString(R.string.pref_sign_prefix_default));
+
+            File tmp = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), prefix + name);
 
             //Prepare sign
             PdfReader reader = new PdfReader(getContentResolver().openInputStream(uri));

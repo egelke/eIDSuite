@@ -38,6 +38,9 @@
         <item>never</item>
     </string-array>
     <string name="pref_sign_network_default" translatable="false">required</string>
+    <string name="pref_sign_prefix">Signed file prefix</string>
+    <string name="pref_sign_prefix_summ">The prefix to add to the file name of the signed file</string>
+    <string name="pref_sign_prefix_default">signed_</string>
     <string name="pref_auth_home">Home page</string>
     <string name="pref_auth_home_summ">Set the home page to go to when pushing the home button</string>
     <string name="pref_auth_search">Search page</string>
@@ -134,7 +137,7 @@
     <!--string name="signedField">\"%1$s\" (signed by %3$s) on page %2$s</string-->
     <string name="select">Select</string>
     <string name="view">View</string>
-    <string name="sign">Sign</string>
+    <string name="sign">Sign &amp; share</string>
 
     <string name="status_whiteCane">white cane</string>
     <string name="status_yellowCane">yellow cane</string>

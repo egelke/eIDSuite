@@ -20,6 +20,11 @@
             android:entries="@array/pref_sign_network_entries"
             android:entryValues="@array/pref_sign_network_values"
             android:defaultValue="@string/pref_sign_network_default" />
+        <EditTextPreference
+            android:key="pref_sign_prefix"
+            android:title="@string/pref_sign_prefix"
+            android:summary="@string/pref_sign_prefix_summ"
+            android:defaultValue="@string/pref_sign_prefix_default" />
     </PreferenceCategory>
     <PreferenceCategory
         android:title="@string/title_activity_auth"

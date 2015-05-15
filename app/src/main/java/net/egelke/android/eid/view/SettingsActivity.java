@@ -24,6 +24,7 @@ public class SettingsActivity extends Activity {
 
     public static final String KEY_PREF_FAIL = "pref_fail";
     public static final String KEY_PREF_SIGN_NETWORK = "pref_sign_network";
+    public static final String KEY_PREF_SIGN_PREFIX = "pref_sign_prefix";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

@@ -84,52 +84,6 @@ public class SignActivity extends Activity implements UpdateListener {
 
     private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
-    private class SaveResult extends AsyncTask<Uri, Void, Uri> {
-
-        @Override
-        protected Uri doInBackground(Uri... uris) {
-            try {
-                InputStream is = new FileInputStream(tmp);
-                OutputStream os =  new FileOutputStream(uris[0].getPath());
-
-                try {
-                    int count;
-                    byte[] buffer = new byte[1024];
-                    if (this.isCancelled()) return null;
-                    while ((count = is.read(buffer)) >= 0) {
-                        os.write(buffer, 0, count);
-                        if (this.isCancelled()) return null;
-                    }
-                } finally {
-                    is.close();
-                    os.close();
-                    tmp.delete();
-                    tmp = null;
-                }
-            } catch (IOException ioe) {
-                Log.e(TAG, "Failed to copy file", ioe);
-            }
-            return uris[0];
-        }
-
-        @Override
-        protected void onPostExecute(Uri file) {
-            p.startUpdate();
-            p.setFile(file);
-
-            Intent sendIntent = new Intent();
-            sendIntent.setAction(Intent.ACTION_SEND);
-            sendIntent.putExtra(Intent.EXTRA_STREAM, file);
-            sendIntent.setType("text/xml");
-            try {
-                startActivity(sendIntent);
-            } catch (ActivityNotFoundException ex) {
-                Toast.makeText(SignActivity.this, R.string.toastNoActivityFound, Toast.LENGTH_SHORT).show();
-            }
-            //Toast.makeText(SignActivity.this, SignActivity.this.getString(R.string.toastSignReady), Toast.LENGTH_SHORT).show();
-        }
-    }
-
     //instance
     private Messenger mEidService = null;
     private BroadcastReceiver bcReceiver;
@@ -171,10 +125,19 @@ public class SignActivity extends Activity implements UpdateListener {
                     return true;
                 case EidService.SIGN_RSP:
                     tmp = new File(msg.getData().getString("output"));
-                    String filename = new File(tmp.getPath()).getName();
 
-                    File dstFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename);
-                    (new SaveResult()).execute(Uri.fromFile(dstFile));
+                    p.startUpdate();
+                    p.setFile(null);
+
+                    Intent sendIntent = new Intent();
+                    sendIntent.setAction(Intent.ACTION_SEND);
+                    sendIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(tmp));
+                    sendIntent.setType("text/xml");
+                    try {
+                        startActivity(sendIntent);
+                    } catch (ActivityNotFoundException ex) {
+                        Toast.makeText(SignActivity.this, R.string.toastNoActivityFound, Toast.LENGTH_SHORT).show();
+                    }
                     return true;
                 default:
                     return false;
@@ -256,6 +219,7 @@ public class SignActivity extends Activity implements UpdateListener {
                     setProgressBarIndeterminateVisibility(true);
                     final Message msg = Message.obtain(null, EidService.SIGN, 0, 0);
                     msg.getData().putParcelable("input", p.getFile());
+                    msg.getData().putString("name", p.getTitle());
                     msg.getData().putString("reason", (String) reason.getSelectedItem());
                     msg.getData().putString("location", location.getText().toString());
                     if (!signInv.isChecked()) msg.getData().putString("sign",

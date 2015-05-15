@@ -77,7 +77,7 @@
     <string name="invSign">Onzichtbare handtekening</string>
     <string name="select">kiezen</string>
     <string name="view">Toon</string>
-    <string name="sign">Teken</string>
+    <string name="sign">Teken &amp; deel</string>
 
     <string name="status_whiteCane">witte stok</string>
     <string name="status_yellowCane">gele stok</string>
@@ -177,5 +177,8 @@
     <string name="toastEidFailed">De eID actie is gefaald</string>
     <string name="action_clean">Verwijder cookies</string>
     <string name="toastFailed">De actie is gefaald</string>
+    <string name="pref_sign_prefix">Ondertekend bestand voorvoegsel</string>
+    <string name="pref_sign_prefix_default">getekend_</string>
+    <string name="pref_sign_prefix_summ">Het voorvoegsel om aan de bestandsnaam van het ondertekende bestand toe te voegen</string>
 
 </resources>
