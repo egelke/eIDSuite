@@ -63,6 +63,7 @@ import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.StandardExceptionParser;
 import com.google.android.gms.analytics.Tracker;
 
 import net.egelke.android.eid.service.EidService;
@@ -322,6 +323,10 @@ public class AuthActivity extends Activity implements GoDialog.Listener {
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Failed HTTP intercept", e);
+                Tracker tracker = ((EidSuiteApp) AuthActivity.this.getApplication()).getTracker();
+                tracker.send(new HitBuilders.ExceptionBuilder()
+                        .setDescription(new StandardExceptionParser(AuthActivity.this, null).getDescription(Thread.currentThread().getName(), e))
+                        .setFatal(false).build());
             }
             return null;
         }

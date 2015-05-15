@@ -30,6 +30,11 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.StandardExceptionParser;
+import com.google.android.gms.analytics.Tracker;
+
+import net.egelke.android.eid.EidSuiteApp;
 import net.egelke.android.eid.R;
 
 import java.net.MalformedURLException;
@@ -84,6 +89,10 @@ public class GoDialog extends DialogFragment {
             listener.onGo(parsed.toString());
         } catch (MalformedURLException e) {
             Toast.makeText(GoDialog.this.getActivity(), R.string.toastInvalidUrl, Toast.LENGTH_LONG).show();
+            Tracker tracker = ((EidSuiteApp) GoDialog.this.getActivity().getApplication()).getTracker();
+            tracker.send(new HitBuilders.ExceptionBuilder()
+                    .setDescription(new StandardExceptionParser(GoDialog.this.getActivity(), null).getDescription(Thread.currentThread().getName(), e))
+                    .setFatal(false).build());
         }
     }
 

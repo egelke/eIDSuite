@@ -29,6 +29,11 @@ import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.widget.Toast;
 
+import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.StandardExceptionParser;
+import com.google.android.gms.analytics.Tracker;
+
+import net.egelke.android.eid.EidSuiteApp;
 import net.egelke.android.eid.R;
 
 public class EndDiagDialog extends DialogFragment {
@@ -51,6 +56,10 @@ public class EndDiagDialog extends DialogFragment {
                             startActivity(i);
                         } catch (ActivityNotFoundException ex) {
                             Toast.makeText(getActivity(), R.string.toastNoMailClient, Toast.LENGTH_SHORT).show();
+                            Tracker tracker = ((EidSuiteApp) EndDiagDialog.this.getActivity().getApplication()).getTracker();
+                            tracker.send(new HitBuilders.ExceptionBuilder()
+                                    .setDescription(new StandardExceptionParser(EndDiagDialog.this.getActivity(), null).getDescription(Thread.currentThread().getName(), ex))
+                                    .setFatal(false).build());
                         }
                     }
                 });

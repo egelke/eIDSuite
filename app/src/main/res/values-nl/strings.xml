@@ -37,7 +37,6 @@
 
     <string name="toastUnknownDevice">Het aangesloten apparaat (%1$s) wordt niet herkend</string>
     <string name="toastPinValid">PIN geldig</string>
-    <string name="toastSignReady">Ondertekend document klaar</string>
 
     <string name="fragment_person">Persoon</string>
     <string name="fragment_address">Adres</string>
@@ -180,5 +179,12 @@
     <string name="pref_sign_prefix">Ondertekend bestand voorvoegsel</string>
     <string name="pref_sign_prefix_default">getekend_</string>
     <string name="pref_sign_prefix_summ">Het voorvoegsel om aan de bestandsnaam van het ondertekende bestand toe te voegen</string>
+    <string name="pref_sign_share">Deel na ondertekenen</string>
+    <string name="pref_sign_share_summ">Het ondertekende bestand automatisch delen nadat het is opgeslagen in Downloads</string>
+    <string name="pref_view_share">Deel na opslaan</string>
+    <string name="pref_view_share_summ">Het opgeslagen eID bestand automatisch delen nadat het is opgeslagen in Downloads</string>
+    <string name="toastSaveFailed">Opslaan eID gefaald</string>
+    <string name="toastSaved">eID opgeslagen</string>
+    <string name="toastSigned">Document ondertekend</string>
 
 </resources>

@@ -54,6 +54,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.StandardExceptionParser;
 import com.google.android.gms.analytics.Tracker;
 
 import net.egelke.android.eid.service.EidService;
@@ -180,6 +181,10 @@ public class SignActivity extends Activity implements UpdateListener {
                     startActivityForResult(intent, OPEN_REQUEST_CODE);
                 } catch (ActivityNotFoundException ex) {
                     Toast.makeText(SignActivity.this, R.string.toastNoActivityFound, Toast.LENGTH_SHORT).show();
+                    Tracker tracker = ((EidSuiteApp) SignActivity.this.getApplication()).getTracker();
+                    tracker.send(new HitBuilders.ExceptionBuilder()
+                            .setDescription(new StandardExceptionParser(SignActivity.this, null).getDescription(Thread.currentThread().getName(), ex))
+                            .setFatal(false).build());
                 }
             }
         });
@@ -194,6 +199,10 @@ public class SignActivity extends Activity implements UpdateListener {
                     startActivity(intent);
                 } catch (ActivityNotFoundException ex) {
                     Toast.makeText(SignActivity.this, R.string.toastNoPdfViewer, Toast.LENGTH_SHORT).show();
+                    Tracker tracker = ((EidSuiteApp) SignActivity.this.getApplication()).getTracker();
+                    tracker.send(new HitBuilders.ExceptionBuilder()
+                            .setDescription(new StandardExceptionParser(SignActivity.this, null).getDescription(Thread.currentThread().getName(), ex))
+                            .setFatal(false).build());
                 }
             }
         });

@@ -559,6 +559,10 @@ public class EidService extends Service {
                 if (dd.hasEid()) foundEid = true;
             } catch (Exception e) {
                 Log.w(TAG, "Failed to diagnose device", e);
+                Tracker tracker = ((EidSuiteApp) this.getApplication()).getTracker();
+                tracker.send(new HitBuilders.ExceptionBuilder()
+                        .setDescription(new StandardExceptionParser(this, null).getDescription(Thread.currentThread().getName(), e))
+                        .setFatal(false).build());
             } finally {
                 ccidDevice = null;
             }
@@ -736,6 +740,10 @@ public class EidService extends Service {
                             startActivity(sendIntent);
                         } catch (ActivityNotFoundException ex) {
                             Toast.makeText(EidService.this, R.string.toastNoActivityFound, Toast.LENGTH_SHORT).show();
+                            Tracker tracker = ((EidSuiteApp) EidService.this.getApplication()).getTracker();
+                            tracker.send(new HitBuilders.ExceptionBuilder()
+                                    .setDescription(new StandardExceptionParser(EidService.this, null).getDescription(Thread.currentThread().getName(), ex))
+                                    .setFatal(false).build());
                         }
                     }
                 }

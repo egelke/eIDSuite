@@ -23,6 +23,8 @@ import android.util.Log;
 import android.view.View;
 
 import com.google.android.gms.analytics.GoogleAnalytics;
+import com.google.android.gms.analytics.HitBuilders;
+import com.google.android.gms.analytics.StandardExceptionParser;
 import com.google.android.gms.analytics.Tracker;
 
 import net.egelke.android.eid.viewmodel.ViewObject;
@@ -52,7 +54,11 @@ public class EidSuiteApp extends Application {
                 Constructor<T> constructor = clazz.getConstructor(Context.class);
                 data.put(clazz.getName(), constructor.newInstance(this));
             } catch (Exception e) {
-                Log.w(TAG, "failed to empty viewstate", e);
+                Log.w(TAG, "failed to create empty viewstate", e);
+                Tracker t = getTracker();
+                t.send(new HitBuilders.ExceptionBuilder()
+                        .setDescription(new StandardExceptionParser(this, null).getDescription(Thread.currentThread().getName(), e))
+                        .setFatal(false).build());
             }
         }
         return (T) data.get(clazz.getName());

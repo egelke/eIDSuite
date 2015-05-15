@@ -117,7 +117,6 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                     outputStream.close();
                 }
             } catch (Exception e) {
-                //TODO:log error (also on other places)
                 Log.e("net.egelke.android.eid", "Writing the eid files failed", e);
                 return e;
             }
@@ -150,6 +149,10 @@ public class ViewActivity extends FragmentActivity implements StartDiagDialog.Li
                                 startActivity(sendIntent);
                             } catch (ActivityNotFoundException ex) {
                                 Toast.makeText(ViewActivity.this, R.string.toastNoActivityFound, Toast.LENGTH_SHORT).show();
+                                Tracker tracker = ((EidSuiteApp) ViewActivity.this.getApplication()).getTracker();
+                                tracker.send(new HitBuilders.ExceptionBuilder()
+                                        .setDescription(new StandardExceptionParser(ViewActivity.this, null).getDescription(Thread.currentThread().getName(), ex))
+                                        .setFatal(false).build());
                             }
                         }
                     }
