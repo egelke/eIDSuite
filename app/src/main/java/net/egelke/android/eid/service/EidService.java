@@ -356,7 +356,11 @@ public class EidService extends Service {
             }
             wait = null;
 
-            unregisterReceiver(attachReceiver);
+            try {
+                unregisterReceiver(attachReceiver);
+            } catch (IllegalArgumentException iae) {
+                Log.i(TAG, "Android claims the receiver isn't registered", iae);
+            }
             if (ccidDevice == null) throw new AbortException("No reader connected");
         }
 
@@ -404,7 +408,11 @@ public class EidService extends Service {
                 }
             }
             wait = null;
-            unregisterReceiver(grantReceiver);
+            try {
+                unregisterReceiver(grantReceiver);
+            } catch (IllegalArgumentException iae) {
+                Log.i(TAG, "Android claims the receiver isn't registered", iae);
+            }
             if (!usbManager.hasPermission(ccidDevice))
                 throw new AbortException("No USB permission granted");
         }
@@ -447,7 +455,11 @@ public class EidService extends Service {
                     }
                 }
                 wait = null;
-                unregisterReceiver(pinReceiver);
+                try {
+                    unregisterReceiver(pinReceiver);
+                } catch (IllegalArgumentException iae) {
+                    Log.i(TAG, "Android claims the receiver isn't registered", iae);
+                }
                 if (pin == null) throw new UserCancelException("No PIN provided");
                 try {
                     return pin.toCharArray();
@@ -758,7 +770,11 @@ public class EidService extends Service {
 
     public void end(Message msg) throws RemoteException {
         if (detachReceiver != null) {
-            unregisterReceiver(detachReceiver);
+            try {
+                unregisterReceiver(detachReceiver);
+            } catch (IllegalArgumentException iae) {
+                Log.i(TAG, "Android claims the receiver isn't registered", iae);
+            }
             detachReceiver = null;
         }
 
