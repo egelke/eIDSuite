@@ -62,7 +62,7 @@
     <string name="notiCInit">eID Service: Card initialization</string>
     <string name="notiCInitMsg">Your eID card is being initialized</string>
     <string name="notiInsert">eID Service: Insert your eID</string>
-    <string name="notiInsertMsg">Please insert your eID in your %1$s eID reader</string>
+    <string name="notiInsertMsg">Please insert your eID in your reader</string>
     <string name="notiRead">eID Service: Card read</string>
     <string name="notiReadMsg">The data (e.g. identity, address, photo) of your eID card is being read</string>
     <string name="notiVerify">eID Service: Verify PIN</string>

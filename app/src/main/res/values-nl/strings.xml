@@ -25,7 +25,7 @@
     <string name="notiCInit">eID Service: Initialiseren van de kaart</string>
     <string name="notiCInitMsg">Uw eID-kaart wordt geïnitialiseerd</string>
     <string name="notiInsert">eID Service: Plaats uw eID</string>
-    <string name="notiInsertMsg">Gelieve uw eID in je %1$s eID-lezer te plaatsen</string>
+    <string name="notiInsertMsg">Gelieve uw eID in je lezer te plaatsen</string>
     <string name="notiRead">eID Service: Kaart lezen</string>
     <string name="notiReadMsg">De gegevens (bijv identiteit, adres, foto) van uw eID kaart worden gelezen</string>
     <string name="notiVerify">eID Service: Controleer PIN</string>
