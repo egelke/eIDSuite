@@ -19,6 +19,7 @@ package net.egelke.android.eid.reader;
 
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbManager;
+import android.os.SystemClock;
 import android.util.Log;
 
 import net.egelke.android.eid.CardBlockedException;
@@ -213,6 +214,7 @@ public class EidCardReader implements Closeable {
 
         Log.d(TAG, "Reading file: " + fileOrCertificate.name());
         selectFile(FILES.get(fileOrCertificate));
+        SystemClock.sleep(10); //To avoid APDU SW: 6986
         return readSelectedFile();
 	}
 
