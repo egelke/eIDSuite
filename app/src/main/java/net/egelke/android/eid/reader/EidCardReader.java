@@ -214,7 +214,7 @@ public class EidCardReader implements Closeable {
 
         Log.d(TAG, "Reading file: " + fileOrCertificate.name());
         selectFile(FILES.get(fileOrCertificate));
-        SystemClock.sleep(10); //To avoid APDU SW: 6986
+        SystemClock.sleep(100); //To avoid APDU SW: 6986
         return readSelectedFile();
 	}
 
